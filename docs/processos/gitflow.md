@@ -22,7 +22,53 @@ O versionamento deste projeto deve seguir GitFlow pensando em contexto de equipe
 
 ## Estado atual do repositório
 
-Até a data atual, o projeto ainda não teve Git inicializado nem foi publicado no GitHub. Isso permite começar do jeito certo, sem precisar adaptar histórico antigo.
+Na etapa atual:
+
+- o Git já foi inicializado
+- a branch `main` já existe localmente e no remoto
+- a branch `develop` já existe localmente
+- o trabalho atual deve continuar a partir de `develop`
+
+Isso significa que o próximo passo correto não é criar Git novamente, e sim publicar `develop` e abrir a primeira `feature/*`.
+
+## Próximo passo prático a partir do estado atual
+
+Se você já está em `develop`, siga esta sequência:
+
+### 1. Garantir que `develop` esteja publicada no remoto
+
+```bash
+git checkout develop
+git push -u origin develop
+```
+
+Por que usar:
+
+Publica a branch de integração do projeto e estabelece o rastreamento remoto, o que facilita próximos `push` e `pull`.
+
+### 2. Abrir a primeira branch de feature
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout -b feature/modulo-atendimentos-inicial
+```
+
+Por que usar:
+
+Mantém `develop` como linha de integração e isola a primeira entrega real do domínio em uma branch própria.
+
+### 3. Trabalhar na feature e publicar a branch
+
+```bash
+git add .
+git commit -m "feat: inicia modulo de atendimentos"
+git push -u origin feature/modulo-atendimentos-inicial
+```
+
+Por que usar:
+
+Permite revisar o trabalho como unidade lógica, preservando clareza sobre o início do módulo.
 
 ## Passo a passo inicial
 
