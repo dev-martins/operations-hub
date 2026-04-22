@@ -12,6 +12,12 @@ export const fetchQueues = async () => {
   return data.data
 }
 
+export const fetchAssignableUsers = async () => {
+  const { data } = await api.get('/v1/users')
+
+  return data.data
+}
+
 export const fetchAttendances = async (filters = {}) => {
   const { data } = await api.get('/v1/attendances', {
     params: filters,
@@ -28,6 +34,18 @@ export const fetchAttendance = async (attendanceId) => {
 
 export const createAttendance = async (payload) => {
   const { data } = await api.post('/v1/attendances', payload)
+
+  return data.data
+}
+
+export const updateAttendanceStatus = async (attendanceId, payload) => {
+  const { data } = await api.patch(`/v1/attendances/${attendanceId}/status`, payload)
+
+  return data.data
+}
+
+export const assignAttendance = async (attendanceId, payload) => {
+  const { data } = await api.patch(`/v1/attendances/${attendanceId}/assignment`, payload)
 
   return data.data
 }

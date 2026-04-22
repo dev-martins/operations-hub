@@ -8,6 +8,7 @@ use App\Enums\AttendanceStatus;
 use App\Enums\AttendanceType;
 use App\Models\Attendance;
 use App\Models\OperationQueue;
+use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -21,14 +22,31 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $tenant = Tenant::query()->firstOrCreate([
+            'slug' => 'montreal-operacoes',
+        ], [
+            'name' => 'Montreal Operacoes',
+            'active' => true,
+        ]);
+
         $user = User::query()->firstOrCreate([
             'email' => 'test@example.com',
         ], [
+            'tenant_id' => $tenant->id,
             'name' => 'Test User',
             'password' => bcrypt('password'),
+            'role' => 'admin',
         ]);
 
-        $this->call(OperationQueueSeeder::class);
+        $user->forceFill([
+            'tenant_id' => $tenant->id,
+            'role' => $user->role ?: 'admin',
+        ])->save();
+
+        $this->call([
+            PassportClientSeeder::class,
+            OperationQueueSeeder::class,
+        ]);
 
         if (Attendance::query()->exists()) {
             return;

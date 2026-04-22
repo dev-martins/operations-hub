@@ -31,6 +31,7 @@ class AttendanceResource extends JsonResource
                     'code' => $this->queue?->code,
                 ];
             }),
+            'assignee' => UserResource::make($this->whenLoaded('assignee')),
             'assigned_to' => $this->assigned_to,
             'created_by' => $this->created_by,
             'opened_at' => optional($this->opened_at)?->toIso8601String(),

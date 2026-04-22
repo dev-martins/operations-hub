@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateAttendanceAssignmentRequest extends FormRequest
 {
@@ -13,8 +14,14 @@ class UpdateAttendanceAssignmentRequest extends FormRequest
 
     public function rules(): array
     {
+        $tenantId = $this->user()?->tenant_id;
+
         return [
-            'assigned_to' => ['required', 'integer', 'exists:users,id'],
+            'assigned_to' => [
+                'required',
+                'integer',
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId)),
+            ],
         ];
     }
 }

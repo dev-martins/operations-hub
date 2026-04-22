@@ -4,15 +4,16 @@ namespace App\Services;
 
 use App\Enums\AttendanceStatus;
 use App\Models\Attendance;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class AttendanceService
 {
-    public function create(array $data): Attendance
+    public function create(array $data, User $actor): Attendance
     {
-        return DB::transaction(function () use ($data): Attendance {
+        return DB::transaction(function () use ($data, $actor): Attendance {
             $attendance = Attendance::create([
-                'tenant_id' => $data['tenant_id'] ?? 1,
+                'tenant_id' => $actor->tenant_id,
                 'protocol' => $this->generateProtocol(),
                 'title' => $data['title'],
                 'description' => $data['description'],
@@ -22,7 +23,7 @@ class AttendanceService
                 'status' => AttendanceStatus::OPEN,
                 'queue_id' => $data['queue_id'],
                 'assigned_to' => $data['assigned_to'] ?? null,
-                'created_by' => $data['created_by'] ?? null,
+                'created_by' => $actor->id,
                 'opened_at' => now(),
             ]);
 
@@ -35,7 +36,7 @@ class AttendanceService
                     'priority' => $attendance->priority->value,
                     'queue_id' => $attendance->queue_id,
                 ],
-                'created_by' => $attendance->created_by,
+                'created_by' => $actor->id,
                 'created_at' => now(),
             ]);
 
@@ -47,18 +48,23 @@ class AttendanceService
                     'metadata' => [
                         'assigned_to' => $attendance->assigned_to,
                     ],
-                    'created_by' => $attendance->created_by,
+                    'created_by' => $actor->id,
                     'created_at' => now(),
                 ]);
             }
 
-            return $attendance->load(['queue', 'events']);
+            return $attendance->load(['queue', 'events', 'assignee']);
         });
     }
 
-    public function changeStatus(Attendance $attendance, AttendanceStatus $status, ?string $resolutionNotes = null): Attendance
+    public function changeStatus(
+        Attendance $attendance,
+        AttendanceStatus $status,
+        ?string $resolutionNotes = null,
+        ?User $actor = null
+    ): Attendance
     {
-        return DB::transaction(function () use ($attendance, $status, $resolutionNotes): Attendance {
+        return DB::transaction(function () use ($attendance, $status, $resolutionNotes, $actor): Attendance {
             $payload = [
                 'status' => $status,
             ];
@@ -82,17 +88,17 @@ class AttendanceService
                     'status' => $status->value,
                     'resolution_notes' => $resolutionNotes,
                 ],
-                'created_by' => $attendance->created_by,
+                'created_by' => $actor?->id,
                 'created_at' => now(),
             ]);
 
-            return $attendance->fresh(['queue', 'events']);
+            return $attendance->fresh(['queue', 'events', 'assignee']);
         });
     }
 
-    public function assign(Attendance $attendance, int $assignedTo): Attendance
+    public function assign(Attendance $attendance, int $assignedTo, ?User $actor = null): Attendance
     {
-        return DB::transaction(function () use ($attendance, $assignedTo): Attendance {
+        return DB::transaction(function () use ($attendance, $assignedTo, $actor): Attendance {
             $attendance->update([
                 'assigned_to' => $assignedTo,
             ]);
@@ -104,11 +110,11 @@ class AttendanceService
                 'metadata' => [
                     'assigned_to' => $assignedTo,
                 ],
-                'created_by' => $attendance->created_by,
+                'created_by' => $actor?->id,
                 'created_at' => now(),
             ]);
 
-            return $attendance->fresh(['queue', 'events']);
+            return $attendance->fresh(['queue', 'events', 'assignee']);
         });
     }
 

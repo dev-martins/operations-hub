@@ -1,17 +1,25 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import {
+  assignAttendance,
   createAttendance,
+  fetchAssignableUsers,
   fetchAttendance,
   fetchAttendances,
   fetchQueues,
+  updateAttendanceStatus,
 } from '../services/attendanceService'
 
 const loading = ref(true)
 const savingAttendance = ref(false)
+const updatingStatus = ref(false)
+const updatingAssignment = ref(false)
 const queues = ref([])
+const users = ref([])
 const attendances = ref([])
 const selectedAttendance = ref(null)
+const actionErrors = ref({})
+const actionFeedback = ref('')
 const filters = reactive({
   status: '',
   priority: '',
@@ -26,6 +34,13 @@ const form = reactive({
   queue_id: '',
 })
 const formErrors = ref({})
+const statusForm = reactive({
+  status: '',
+  resolution_notes: '',
+})
+const assignmentForm = reactive({
+  assigned_to: '',
+})
 
 const priorityToneMap = {
   critical: 'is-critical',
@@ -73,6 +88,10 @@ const metrics = computed(() => {
 })
 
 const hasAttendances = computed(() => attendances.value.length > 0)
+const hasUsers = computed(() => users.value.length > 0)
+const requiresResolutionNotes = computed(() => statusForm.status === 'resolved')
+const detailEvents = computed(() => selectedAttendance.value?.events ?? [])
+const assigneeName = computed(() => selectedAttendance.value?.assignee?.name ?? 'Não atribuído')
 
 const queueCards = computed(() => {
   return queues.value.map((queue) => ({
@@ -81,7 +100,16 @@ const queueCards = computed(() => {
   }))
 })
 
-const detailEvents = computed(() => selectedAttendance.value?.events ?? [])
+const formatDateTime = (value) => {
+  if (!value) {
+    return 'Sem registro'
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(new Date(value))
+}
 
 const loadQueues = async () => {
   const data = await fetchQueues()
@@ -90,6 +118,10 @@ const loadQueues = async () => {
   if (!form.queue_id && data.length > 0) {
     form.queue_id = data[0].id
   }
+}
+
+const loadUsers = async () => {
+  users.value = await fetchAssignableUsers()
 }
 
 const loadAttendances = async () => {
@@ -103,13 +135,6 @@ const loadAttendances = async () => {
   if (attendances.value.length > 0 && !selectedAttendance.value) {
     await selectAttendance(attendances.value[0].id)
   }
-
-  if (
-    selectedAttendance.value
-    && !attendances.value.some(({ id }) => id === selectedAttendance.value.id)
-  ) {
-    selectedAttendance.value = null
-  }
 }
 
 const loadView = async () => {
@@ -118,6 +143,7 @@ const loadView = async () => {
   try {
     await Promise.all([
       loadQueues(),
+      loadUsers(),
       loadAttendances(),
     ])
   } finally {
@@ -126,7 +152,20 @@ const loadView = async () => {
 }
 
 const selectAttendance = async (attendanceId) => {
+  actionErrors.value = {}
+  actionFeedback.value = ''
   selectedAttendance.value = await fetchAttendance(attendanceId)
+}
+
+const refreshOperationalPanels = async (attendanceId) => {
+  await Promise.all([
+    loadQueues(),
+    loadAttendances(),
+  ])
+
+  if (attendanceId) {
+    selectedAttendance.value = await fetchAttendance(attendanceId)
+  }
 }
 
 const submitAttendance = async () => {
@@ -137,7 +176,6 @@ const submitAttendance = async () => {
     const attendance = await createAttendance({
       ...form,
       queue_id: Number(form.queue_id),
-      tenant_id: 1,
     })
 
     form.title = ''
@@ -146,15 +184,69 @@ const submitAttendance = async () => {
     form.origin = 'manual'
     form.priority = 'medium'
 
-    selectedAttendance.value = attendance
-
-    await Promise.all([loadQueues(), loadAttendances()])
+    await refreshOperationalPanels(attendance.id)
   } catch (error) {
     formErrors.value = error.response?.data?.errors ?? {}
   } finally {
     savingAttendance.value = false
   }
 }
+
+const submitStatusUpdate = async () => {
+  if (!selectedAttendance.value || !statusForm.status) {
+    return
+  }
+
+  updatingStatus.value = true
+  actionErrors.value = {}
+  actionFeedback.value = ''
+
+  try {
+    const payload = {
+      status: statusForm.status,
+    }
+
+    if (requiresResolutionNotes.value) {
+      payload.resolution_notes = statusForm.resolution_notes
+    }
+
+    await updateAttendanceStatus(selectedAttendance.value.id, payload)
+    await refreshOperationalPanels(selectedAttendance.value.id)
+    actionFeedback.value = 'Status atualizado com sucesso.'
+  } catch (error) {
+    actionErrors.value = error.response?.data?.errors ?? {}
+  } finally {
+    updatingStatus.value = false
+  }
+}
+
+const submitAssignmentUpdate = async () => {
+  if (!selectedAttendance.value || !assignmentForm.assigned_to) {
+    return
+  }
+
+  updatingAssignment.value = true
+  actionErrors.value = {}
+  actionFeedback.value = ''
+
+  try {
+    await assignAttendance(selectedAttendance.value.id, {
+      assigned_to: Number(assignmentForm.assigned_to),
+    })
+    await refreshOperationalPanels(selectedAttendance.value.id)
+    actionFeedback.value = 'Responsável atualizado com sucesso.'
+  } catch (error) {
+    actionErrors.value = error.response?.data?.errors ?? {}
+  } finally {
+    updatingAssignment.value = false
+  }
+}
+
+watch(selectedAttendance, (attendance) => {
+  statusForm.status = attendance?.status ?? ''
+  statusForm.resolution_notes = attendance?.resolution_notes ?? ''
+  assignmentForm.assigned_to = attendance?.assigned_to ?? ''
+}, { immediate: true })
 
 onMounted(async () => {
   await loadView()
@@ -308,6 +400,7 @@ onMounted(async () => {
                     <th>Protocolo</th>
                     <th>Título</th>
                     <th>Fila</th>
+                    <th>Responsável</th>
                     <th>Status</th>
                     <th>Prioridade</th>
                   </tr>
@@ -326,6 +419,7 @@ onMounted(async () => {
                       <small class="c-grey-600">{{ attendance.origin_label }} • {{ attendance.type_label }}</small>
                     </td>
                     <td>{{ attendance.queue?.name }}</td>
+                    <td>{{ attendance.assignee?.name ?? 'Não atribuído' }}</td>
                     <td>
                       <span class="ticket-tag" :class="statusToneMap[attendance.status]">
                         {{ attendance.status_label }}
@@ -395,6 +489,94 @@ onMounted(async () => {
               </span>
               <span class="ticket-tag is-info">{{ selectedAttendance.queue?.name }}</span>
             </div>
+            <div class="detail-grid mT-20">
+              <div>
+                <small class="detail-label">Responsável</small>
+                <strong class="d-block">{{ assigneeName }}</strong>
+              </div>
+              <div>
+                <small class="detail-label">Abertura</small>
+                <strong class="d-block">{{ formatDateTime(selectedAttendance.opened_at) }}</strong>
+              </div>
+              <div>
+                <small class="detail-label">Primeira resposta</small>
+                <strong class="d-block">{{ formatDateTime(selectedAttendance.first_response_at) }}</strong>
+              </div>
+              <div>
+                <small class="detail-label">Resolução</small>
+                <strong class="d-block">{{ formatDateTime(selectedAttendance.resolved_at) }}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="detail-card">
+            <div class="row">
+              <div class="col-lg-6 mB-20">
+                <h6 class="mB-15">Atualizar status</h6>
+                <div class="mB-15">
+                  <label class="form-label">Novo status</label>
+                  <select v-model="statusForm.status" class="form-control">
+                    <option value="open">Aberto</option>
+                    <option value="in_progress">Em atendimento</option>
+                    <option value="waiting_external">Aguardando externo</option>
+                    <option value="resolved">Resolvido</option>
+                    <option value="cancelled">Cancelado</option>
+                  </select>
+                  <small v-if="actionErrors.status" class="field-error">{{ actionErrors.status[0] }}</small>
+                </div>
+
+                <div v-if="requiresResolutionNotes" class="mB-15">
+                  <label class="form-label">Notas de resolução</label>
+                  <textarea
+                    v-model="statusForm.resolution_notes"
+                    class="form-control"
+                    rows="4"
+                    placeholder="Descreva o que foi feito para concluir o atendimento."
+                  />
+                  <small v-if="actionErrors.resolution_notes" class="field-error">
+                    {{ actionErrors.resolution_notes[0] }}
+                  </small>
+                </div>
+
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm"
+                  :disabled="updatingStatus || !statusForm.status"
+                  @click="submitStatusUpdate"
+                >
+                  {{ updatingStatus ? 'Salvando...' : 'Salvar status' }}
+                </button>
+              </div>
+
+              <div class="col-lg-6 mB-20">
+                <h6 class="mB-15">Atribuir responsável</h6>
+                <div class="mB-15">
+                  <label class="form-label">Operador</label>
+                  <select v-model="assignmentForm.assigned_to" class="form-control" :disabled="!hasUsers">
+                    <option value="">
+                      {{ hasUsers ? 'Selecione um operador' : 'Nenhum operador disponível' }}
+                    </option>
+                    <option v-for="user in users" :key="user.id" :value="user.id">
+                      {{ user.name }} • {{ user.email }}
+                    </option>
+                  </select>
+                  <small v-if="actionErrors.assigned_to" class="field-error">{{ actionErrors.assigned_to[0] }}</small>
+                </div>
+
+                <button
+                  type="button"
+                  class="btn btn-outline-primary btn-sm"
+                  :disabled="updatingAssignment || !assignmentForm.assigned_to"
+                  @click="submitAssignmentUpdate"
+                >
+                  {{ updatingAssignment ? 'Atribuindo...' : 'Salvar responsável' }}
+                </button>
+              </div>
+            </div>
+
+            <div v-if="actionFeedback" class="action-feedback">
+              {{ actionFeedback }}
+            </div>
           </div>
 
           <div class="detail-card">
@@ -407,7 +589,7 @@ onMounted(async () => {
                 <div class="timeline-marker"></div>
                 <div class="timeline-content">
                   <strong class="d-block">{{ event.description }}</strong>
-                  <small class="c-grey-600">{{ event.type }} • {{ event.created_at }}</small>
+                  <small class="c-grey-600">{{ event.type }} • {{ formatDateTime(event.created_at) }}</small>
                 </div>
               </div>
             </div>

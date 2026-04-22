@@ -1,13 +1,16 @@
 <script setup>
-import { nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { RouterLink, RouterView } from 'vue-router'
+import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import Sidebar from './adminator/scripts/components/Sidebar'
 import Theme from './adminator/scripts/utils/theme'
 import logoUrl from './adminator/static/images/logo.svg'
+import { authState, clearAuthSession, initializeAuthSession, isAuthenticated, logout } from './stores/authSession'
 import { fetchApiStatus } from './services/attendanceService'
 
 const apiStatus = ref('carregando')
 const currentTheme = ref('light')
+const route = useRoute()
+const router = useRouter()
 let sidebar = null
 
 const navigationItems = [
@@ -37,14 +40,18 @@ const syncTheme = () => {
   currentTheme.value = Theme.current()
 }
 
+const isAuthLayout = computed(() => route.meta.layout === 'auth')
+const currentUserName = computed(() => authState.user?.name ?? 'Operador')
+const currentTenantName = computed(() => authState.tenant?.name ?? 'Tenant nao identificado')
+
 const toggleTheme = () => {
   Theme.toggle()
   syncTheme()
 }
 
-const handleLogout = () => {
-  window.dispatchEvent(new CustomEvent('app:logout'))
-  window.alert('Fluxo de logout será conectado quando a autenticação estiver implementada.')
+const handleLogout = async () => {
+  await logout()
+  await router.push({ name: 'login' })
 }
 
 const loadApiStatus = async () => {
@@ -56,26 +63,41 @@ const loadApiStatus = async () => {
   }
 }
 
+const handleUnauthorized = async () => {
+  clearAuthSession()
+
+  if (route.name !== 'login') {
+    await router.push({ name: 'login' })
+  }
+}
+
 onMounted(async () => {
   document.body.classList.add('app')
   Theme.init()
   syncTheme()
+  await initializeAuthSession()
   await loadApiStatus()
 
   await nextTick()
   sidebar = new Sidebar()
   window.addEventListener('adminator:themeChanged', syncTheme)
+  window.addEventListener('app:unauthorized', handleUnauthorized)
 })
 
 onUnmounted(() => {
   document.body.classList.remove('app')
   window.removeEventListener('adminator:themeChanged', syncTheme)
+  window.removeEventListener('app:unauthorized', handleUnauthorized)
   sidebar = null
 })
 </script>
 
 <template>
-  <div class="app-shell">
+  <div v-if="isAuthLayout" class="app-shell">
+    <RouterView />
+  </div>
+
+  <div v-else class="app-shell">
     <div class="sidebar">
       <div class="sidebar-inner">
         <div class="sidebar-logo">
@@ -139,6 +161,18 @@ onUnmounted(() => {
           </ul>
 
           <ul class="nav-right">
+            <li v-if="isAuthenticated">
+              <span class="tenant-chip">
+                <i class="ti-server"></i>
+                {{ currentTenantName }}
+              </span>
+            </li>
+            <li v-if="isAuthenticated">
+              <span class="user-chip">
+                <i class="ti-user"></i>
+                {{ currentUserName }}
+              </span>
+            </li>
             <li>
               <span class="status-chip">
                 <i class="ti-pulse"></i>
@@ -164,7 +198,7 @@ onUnmounted(() => {
                 </label>
               </div>
             </li>
-            <li>
+            <li v-if="isAuthenticated">
               <button type="button" class="logout-button" @click="handleLogout">
                 <i class="ti-power-off"></i>
                 <span>Sair</span>

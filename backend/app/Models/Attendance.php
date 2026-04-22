@@ -6,6 +6,7 @@ use App\Enums\AttendanceOrigin;
 use App\Enums\AttendancePriority;
 use App\Enums\AttendanceStatus;
 use App\Enums\AttendanceType;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,6 +50,11 @@ class Attendance extends Model
     public function queue(): BelongsTo
     {
         return $this->belongsTo(OperationQueue::class, 'queue_id');
+    }
+
+    public function assignee(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 
     public function events(): HasMany

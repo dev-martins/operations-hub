@@ -7,6 +7,7 @@ use App\Http\Requests\UpdateAttendanceAssignmentRequest;
 use App\Http\Resources\AttendanceResource;
 use App\Models\Attendance;
 use App\Services\AttendanceService;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AttendanceAssignmentController extends Controller
 {
@@ -14,13 +15,23 @@ class AttendanceAssignmentController extends Controller
     {
     }
 
-    public function update(UpdateAttendanceAssignmentRequest $request, Attendance $attendance): AttendanceResource
+    public function update(UpdateAttendanceAssignmentRequest $request, int $attendance): AttendanceResource
     {
         $attendance = $this->attendanceService->assign(
-            $attendance,
+            $this->findAttendanceForTenant($attendance, $request->user()->tenant_id),
             $request->integer('assigned_to'),
+            $request->user(),
         );
 
         return AttendanceResource::make($attendance);
+    }
+
+    private function findAttendanceForTenant(int $attendanceId, int $tenantId): Attendance
+    {
+        return Attendance::query()
+            ->whereKey($attendanceId)
+            ->where('tenant_id', $tenantId)
+            ->first()
+            ?? throw new NotFoundHttpException();
     }
 }

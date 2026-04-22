@@ -7,6 +7,7 @@ use App\Enums\AttendancePriority;
 use App\Enums\AttendanceType;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Enum;
+use Illuminate\Validation\Rule;
 
 class StoreAttendanceRequest extends FormRequest
 {
@@ -17,15 +18,24 @@ class StoreAttendanceRequest extends FormRequest
 
     public function rules(): array
     {
+        $tenantId = $this->user()?->tenant_id;
+
         return [
-            'tenant_id' => ['nullable', 'integer', 'min:1'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['required', 'string'],
             'type' => ['required', new Enum(AttendanceType::class)],
             'origin' => ['required', new Enum(AttendanceOrigin::class)],
             'priority' => ['required', new Enum(AttendancePriority::class)],
-            'queue_id' => ['required', 'integer', 'exists:queues,id'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
+            'queue_id' => [
+                'required',
+                'integer',
+                Rule::exists('queues', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId)),
+            ],
+            'assigned_to' => [
+                'nullable',
+                'integer',
+                Rule::exists('users', 'id')->where(fn ($query) => $query->where('tenant_id', $tenantId)),
+            ],
         ];
     }
 }
