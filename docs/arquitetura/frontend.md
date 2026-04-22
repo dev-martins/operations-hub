@@ -80,6 +80,13 @@ Isso afeta:
 - filtros por contexto operacional
 - mensagens de acesso negado ou indisponibilidade funcional
 
+Na etapa atual, o frontend já usa o payload autenticado para:
+
+- filtrar a navegação disponível
+- bloquear acesso a rotas sem permissão
+- esconder ações operacionais que o papel atual não pode executar
+- exibir uma visão explícita da matriz inicial de ACL
+
 ## Relação com o Adminator
 
 O Adminator deve ser usado como base visual e estrutural, mas adaptado ao Vue.

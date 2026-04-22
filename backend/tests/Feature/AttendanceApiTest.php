@@ -211,7 +211,11 @@ class AttendanceApiTest extends TestCase
 
     public function test_it_assigns_an_attendance_to_a_user(): void
     {
-        $actor = $this->actingAsTenantUser();
+        $actor = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'supervisor',
+            ]),
+        );
 
         $queue = OperationQueue::query()->create([
             'tenant_id' => $actor->tenant_id,
@@ -250,5 +254,45 @@ class AttendanceApiTest extends TestCase
             'type' => 'assigned',
             'created_by' => $actor->id,
         ]);
+    }
+
+    public function test_it_blocks_assignment_for_roles_without_permission(): void
+    {
+        $actor = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'operator',
+            ]),
+        );
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $actor->tenant_id,
+            'name' => 'Suporte N1',
+            'code' => 'SUP-N1',
+            'active' => true,
+        ]);
+
+        $assignee = User::factory()->create([
+            'tenant_id' => $actor->tenant_id,
+        ]);
+
+        $attendance = Attendance::query()->create([
+            'tenant_id' => $actor->tenant_id,
+            'protocol' => 'AT-500005',
+            'title' => 'Reatribuição necessária',
+            'description' => 'Carga operacional precisa ser redistribuída.',
+            'type' => AttendanceType::REQUEST,
+            'origin' => AttendanceOrigin::PORTAL,
+            'priority' => AttendancePriority::MEDIUM,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'opened_at' => now(),
+        ]);
+
+        $response = $this->patchJson("/api/v1/attendances/{$attendance->id}/assignment", [
+            'assigned_to' => $assignee->id,
+        ]);
+
+        $response->assertForbidden()
+            ->assertJsonPath('required_permission', 'attendances.assign');
     }
 }

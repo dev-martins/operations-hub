@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { hasPermission } from '../stores/authSession'
 import {
   assignAttendance,
   createAttendance,
@@ -92,6 +93,9 @@ const hasUsers = computed(() => users.value.length > 0)
 const requiresResolutionNotes = computed(() => statusForm.status === 'resolved')
 const detailEvents = computed(() => selectedAttendance.value?.events ?? [])
 const assigneeName = computed(() => selectedAttendance.value?.assignee?.name ?? 'Não atribuído')
+const canCreateAttendance = computed(() => hasPermission('attendances.create'))
+const canUpdateStatus = computed(() => hasPermission('attendances.update_status'))
+const canAssignAttendance = computed(() => hasPermission('attendances.assign'))
 
 const queueCards = computed(() => {
   return queues.value.map((queue) => ({
@@ -121,6 +125,11 @@ const loadQueues = async () => {
 }
 
 const loadUsers = async () => {
+  if (!canAssignAttendance.value) {
+    users.value = []
+    return
+  }
+
   users.value = await fetchAssignableUsers()
 }
 
@@ -141,11 +150,16 @@ const loadView = async () => {
   loading.value = true
 
   try {
-    await Promise.all([
+    const tasks = [
       loadQueues(),
-      loadUsers(),
       loadAttendances(),
-    ])
+    ]
+
+    if (canAssignAttendance.value) {
+      tasks.push(loadUsers())
+    }
+
+    await Promise.all(tasks)
   } finally {
     loading.value = false
   }
@@ -269,7 +283,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div class="col-lg-4">
+    <div v-if="canCreateAttendance" class="col-lg-4">
       <div class="bd bgc-white p-20 h-100">
         <div class="d-flex jc-sb ai-c mB-20">
           <h5 class="mB-0">Novo atendimento</h5>
@@ -340,7 +354,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div class="col-lg-8">
+    <div :class="canCreateAttendance ? 'col-lg-8' : 'col-12'">
       <div class="bd bgc-white h-100">
         <div class="layers">
           <div class="layer w-100 pX-20 pT-20">
@@ -513,64 +527,76 @@ onMounted(async () => {
             <div class="row">
               <div class="col-lg-6 mB-20">
                 <h6 class="mB-15">Atualizar status</h6>
-                <div class="mB-15">
-                  <label class="form-label">Novo status</label>
-                  <select v-model="statusForm.status" class="form-control">
-                    <option value="open">Aberto</option>
-                    <option value="in_progress">Em atendimento</option>
-                    <option value="waiting_external">Aguardando externo</option>
-                    <option value="resolved">Resolvido</option>
-                    <option value="cancelled">Cancelado</option>
-                  </select>
-                  <small v-if="actionErrors.status" class="field-error">{{ actionErrors.status[0] }}</small>
-                </div>
+                <template v-if="canUpdateStatus">
+                  <div class="mB-15">
+                    <label class="form-label">Novo status</label>
+                    <select v-model="statusForm.status" class="form-control">
+                      <option value="open">Aberto</option>
+                      <option value="in_progress">Em atendimento</option>
+                      <option value="waiting_external">Aguardando externo</option>
+                      <option value="resolved">Resolvido</option>
+                      <option value="cancelled">Cancelado</option>
+                    </select>
+                    <small v-if="actionErrors.status" class="field-error">{{ actionErrors.status[0] }}</small>
+                  </div>
 
-                <div v-if="requiresResolutionNotes" class="mB-15">
-                  <label class="form-label">Notas de resolução</label>
-                  <textarea
-                    v-model="statusForm.resolution_notes"
-                    class="form-control"
-                    rows="4"
-                    placeholder="Descreva o que foi feito para concluir o atendimento."
-                  />
-                  <small v-if="actionErrors.resolution_notes" class="field-error">
-                    {{ actionErrors.resolution_notes[0] }}
-                  </small>
-                </div>
+                  <div v-if="requiresResolutionNotes" class="mB-15">
+                    <label class="form-label">Notas de resolução</label>
+                    <textarea
+                      v-model="statusForm.resolution_notes"
+                      class="form-control"
+                      rows="4"
+                      placeholder="Descreva o que foi feito para concluir o atendimento."
+                    />
+                    <small v-if="actionErrors.resolution_notes" class="field-error">
+                      {{ actionErrors.resolution_notes[0] }}
+                    </small>
+                  </div>
 
-                <button
-                  type="button"
-                  class="btn btn-primary btn-sm"
-                  :disabled="updatingStatus || !statusForm.status"
-                  @click="submitStatusUpdate"
-                >
-                  {{ updatingStatus ? 'Salvando...' : 'Salvar status' }}
-                </button>
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    :disabled="updatingStatus || !statusForm.status"
+                    @click="submitStatusUpdate"
+                  >
+                    {{ updatingStatus ? 'Salvando...' : 'Salvar status' }}
+                  </button>
+                </template>
+
+                <div v-else class="empty-state compact permission-state">
+                  Seu papel pode acompanhar o detalhe, mas não alterar o status do atendimento.
+                </div>
               </div>
 
               <div class="col-lg-6 mB-20">
                 <h6 class="mB-15">Atribuir responsável</h6>
-                <div class="mB-15">
-                  <label class="form-label">Operador</label>
-                  <select v-model="assignmentForm.assigned_to" class="form-control" :disabled="!hasUsers">
-                    <option value="">
-                      {{ hasUsers ? 'Selecione um operador' : 'Nenhum operador disponível' }}
-                    </option>
-                    <option v-for="user in users" :key="user.id" :value="user.id">
-                      {{ user.name }} • {{ user.email }}
-                    </option>
-                  </select>
-                  <small v-if="actionErrors.assigned_to" class="field-error">{{ actionErrors.assigned_to[0] }}</small>
-                </div>
+                <template v-if="canAssignAttendance">
+                  <div class="mB-15">
+                    <label class="form-label">Operador</label>
+                    <select v-model="assignmentForm.assigned_to" class="form-control" :disabled="!hasUsers">
+                      <option value="">
+                        {{ hasUsers ? 'Selecione um operador' : 'Nenhum operador disponível' }}
+                      </option>
+                      <option v-for="user in users" :key="user.id" :value="user.id">
+                        {{ user.name }} • {{ user.email }}
+                      </option>
+                    </select>
+                    <small v-if="actionErrors.assigned_to" class="field-error">{{ actionErrors.assigned_to[0] }}</small>
+                  </div>
 
-                <button
-                  type="button"
-                  class="btn btn-outline-primary btn-sm"
-                  :disabled="updatingAssignment || !assignmentForm.assigned_to"
-                  @click="submitAssignmentUpdate"
-                >
-                  {{ updatingAssignment ? 'Atribuindo...' : 'Salvar responsável' }}
-                </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline-primary btn-sm"
+                    :disabled="updatingAssignment || !assignmentForm.assigned_to"
+                    @click="submitAssignmentUpdate"
+                  >
+                    {{ updatingAssignment ? 'Atribuindo...' : 'Salvar responsável' }}
+                  </button>
+                </template>
+
+                <div v-else class="empty-state compact permission-state">
+                  A redistribuição de atendimentos fica disponível apenas para supervisão e administração.
+                </div>
               </div>
             </div>
 

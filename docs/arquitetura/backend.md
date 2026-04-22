@@ -71,6 +71,13 @@ Papéis e permissões devem impactar:
 - exibição de botões e opções no frontend
 - execução de aprovações, reprocessamentos e administração
 
+Na etapa atual, a ACL inicial foi materializada com:
+
+- catálogo central de papéis e permissões em `app/Support/Acl`
+- payload autenticado já retornando papel e permissões do usuário
+- middleware de permissão aplicado diretamente nas rotas da API
+- manutenção do escopo por tenant como filtro complementar à autorização
+
 ### Legado e integrações
 
 Integrações com sistemas legados devem preferir adapters e serviços dedicados para evitar espalhar particularidades externas por controllers e models.

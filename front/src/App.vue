@@ -4,7 +4,7 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import Sidebar from './adminator/scripts/components/Sidebar'
 import Theme from './adminator/scripts/utils/theme'
 import logoUrl from './adminator/static/images/logo.svg'
-import { authState, clearAuthSession, initializeAuthSession, isAuthenticated, logout } from './stores/authSession'
+import { authState, clearAuthSession, hasPermission, initializeAuthSession, isAuthenticated, logout } from './stores/authSession'
 import { fetchApiStatus } from './services/attendanceService'
 
 const apiStatus = ref('carregando')
@@ -18,21 +18,25 @@ const navigationItems = [
     label: 'Fila operacional',
     to: '/operacional/fila',
     iconClass: 'c-blue-500 ti-agenda',
+    permission: 'attendances.view',
   },
   {
     label: 'Atendimentos',
     to: '/atendimentos',
     iconClass: 'c-orange-500 ti-layout-list-thumb',
+    permission: 'attendances.view',
   },
   {
     label: 'Filas',
     to: '/filas',
     iconClass: 'c-green-500 ti-package',
+    permission: 'queues.view',
   },
   {
     label: 'ACL',
     to: '/acl',
     iconClass: 'c-purple-500 ti-shield',
+    permission: 'acl.view',
   },
 ]
 
@@ -43,6 +47,10 @@ const syncTheme = () => {
 const isAuthLayout = computed(() => route.meta.layout === 'auth')
 const currentUserName = computed(() => authState.user?.name ?? 'Operador')
 const currentTenantName = computed(() => authState.tenant?.name ?? 'Tenant nao identificado')
+const currentRoleLabel = computed(() => authState.user?.role_context?.label ?? 'Sem papel')
+const visibleNavigationItems = computed(() => {
+  return navigationItems.filter((item) => !item.permission || hasPermission(item.permission))
+})
 
 const toggleTheme = () => {
   Theme.toggle()
@@ -130,7 +138,7 @@ onUnmounted(() => {
 
         <ul class="sidebar-menu scrollable pos-r">
           <li
-            v-for="item in navigationItems"
+            v-for="item in visibleNavigationItems"
             :key="item.to"
             class="nav-item mT-30"
           >
@@ -165,6 +173,12 @@ onUnmounted(() => {
               <span class="tenant-chip">
                 <i class="ti-server"></i>
                 {{ currentTenantName }}
+              </span>
+            </li>
+            <li v-if="isAuthenticated">
+              <span class="user-chip role-chip">
+                <i class="ti-id-badge"></i>
+                {{ currentRoleLabel }}
               </span>
             </li>
             <li v-if="isAuthenticated">

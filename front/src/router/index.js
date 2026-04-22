@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { initializeAuthSession, isAuthenticated } from '../stores/authSession'
+import { hasPermission, initializeAuthSession, isAuthenticated } from '../stores/authSession'
 import AclView from '../views/AclView.vue'
 import AttendancesView from '../views/AttendancesView.vue'
 import LoginView from '../views/LoginView.vue'
@@ -28,6 +28,7 @@ const router = createRouter({
       component: OperationalQueueView,
       meta: {
         requiresAuth: true,
+        permission: 'attendances.view',
       },
     },
     {
@@ -36,6 +37,7 @@ const router = createRouter({
       component: AttendancesView,
       meta: {
         requiresAuth: true,
+        permission: 'attendances.view',
       },
     },
     {
@@ -44,6 +46,7 @@ const router = createRouter({
       component: QueuesView,
       meta: {
         requiresAuth: true,
+        permission: 'queues.view',
       },
     },
     {
@@ -52,6 +55,7 @@ const router = createRouter({
       component: AclView,
       meta: {
         requiresAuth: true,
+        permission: 'acl.view',
       },
     },
   ],
@@ -71,6 +75,10 @@ router.beforeEach(async (to) => {
         redirect: to.fullPath,
       },
     }
+  }
+
+  if (to.meta.permission && !hasPermission(to.meta.permission)) {
+    return { name: 'operational-queue' }
   }
 
   return true

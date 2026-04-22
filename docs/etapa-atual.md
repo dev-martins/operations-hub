@@ -15,33 +15,35 @@ Primeiro módulo de domínio implementado com autenticação inicial e contexto 
 - autenticação inicial da API com Laravel Passport
 - tela de login no frontend com carregamento de usuário autenticado e tenant ativo
 - rotas do módulo protegidas e filtradas pelo tenant do usuário autenticado
+- ACL inicial com papéis, permissões e bloqueio de rotas no backend
+- reflexo de permissões no frontend com navegação e ações condicionadas
 - testes de feature cobrindo os contratos principais da API
 - documentação do módulo em `docs/modulos/atendimentos-inicial.md`
+- documentação da ACL inicial em `docs/modulos/acl-inicial.md`
 - README público neutro
 - estrutura de `docs/` preparada para crescer
 
 ## O que ainda não existe
 
-- ACL implementada
 - arquitetura formal de estado compartilhado no frontend
 - pipeline CI/CD configurado
 - fluxo Git/GitFlow inicializado no repositório
 
 ## Leitura da fase atual
 
-O projeto já demonstra um fluxo operacional protegido por autenticação e com contexto inicial de tenant acoplado ao usuário. O próximo salto de maturidade está em aprofundar governança de permissões, fortalecer a camada de estado compartilhado do frontend e ampliar a automação de qualidade.
+O projeto já demonstra um fluxo operacional protegido por autenticação, contexto inicial de tenant e uma primeira camada de ACL aplicada em rotas e ações da interface. O próximo salto de maturidade está em aprofundar governança fina por recurso, fortalecer a camada de estado compartilhado do frontend e ampliar a automação de qualidade.
 
 ## Próximo passo recomendado
 
 O avanço mais coerente agora é:
 
-1. conectar ACL às ações de visualização, mudança de status e atribuição
-2. formalizar estado compartilhado no frontend para permissões e contexto operacional mais amplo
+1. aprofundar a ACL com rules por recurso e distinções mais fortes entre supervisão e administração
+2. formalizar estado compartilhado do frontend para além da sessão autenticada
 3. preparar a integração da feature em `develop` com documentação e fluxo GitFlow registrados
 
 ## Leitura recomendada para a próxima fase
 
-A próxima etapa não deve priorizar nova infraestrutura. O valor agora está em provar ACL, regras de autorização mais finas e consistência arquitetural sobre o domínio já autenticado.
+A próxima etapa não deve priorizar nova infraestrutura. O valor agora está em provar regras de autorização mais finas, ampliar a consistência arquitetural da ACL e fortalecer qualidade automatizada sobre o domínio já autenticado.
 
 O módulo atual já permite:
 
@@ -53,4 +55,4 @@ O módulo atual já permite:
 - atualizar status
 - atribuir responsável
 
-O próximo passo é fazer esse fluxo operar com identidade, contexto e governança, para que a evolução para tenant, ACL, integrações e CI/CD aconteça sobre uma base funcional real.
+O próximo passo é fazer esse fluxo operar com governança mais detalhada por recurso, para que a evolução para tenant mais robusto, integrações e CI/CD aconteça sobre uma base funcional real.
