@@ -1,4 +1,5 @@
 AGENTS.md
+.private/
 .env
 .env.testing
 .idea/
