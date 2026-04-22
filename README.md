@@ -123,3 +123,10 @@ Com isso, o sistema deixa de ser apenas uma base preparada e passa a demonstrar 
 ## Documentação
 
 Os artefatos de arquitetura, domínio, diagramas e decisões técnicas devem ser registrados em `docs/` conforme o sistema evolui.
+
+Leituras já disponíveis:
+
+- `docs/arquitetura/backend.md`
+- `docs/arquitetura/frontend.md`
+- `docs/arquitetura/dominio-operacional.md`
+- `docs/modulos/atendimentos-inicial.md`
