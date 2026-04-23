@@ -202,6 +202,42 @@ select {
   text-align: left;
 }
 
+.attendance-toolbar {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.attendance-summary-line {
+  color: var(--c-text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.attendance-dedicated-table td small {
+  line-height: 1.4;
+}
+
+.attendance-pagination {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.pagination-chip {
+  background: rgba(13, 110, 253, 0.08);
+  border-radius: 999px;
+  color: var(--c-text-base);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+
 .next-phase-card {
   background: color-mix(in srgb, var(--c-bkg-card) 88%, var(--c-primary) 12%);
   border: 1px solid var(--c-border);
