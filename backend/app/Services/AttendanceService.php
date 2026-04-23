@@ -6,6 +6,7 @@ use App\Enums\AttendanceStatus;
 use App\Models\Attendance;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class AttendanceService
 {
@@ -65,6 +66,8 @@ class AttendanceService
     ): Attendance
     {
         return DB::transaction(function () use ($attendance, $status, $resolutionNotes, $actor): Attendance {
+            $this->ensureStatusTransitionIsMeaningful($attendance, $status);
+
             $payload = [
                 'status' => $status,
             ];
@@ -121,5 +124,14 @@ class AttendanceService
     private function generateProtocol(): string
     {
         return sprintf('AT-%s', str_pad((string) random_int(1, 999999), 6, '0', STR_PAD_LEFT));
+    }
+
+    private function ensureStatusTransitionIsMeaningful(Attendance $attendance, AttendanceStatus $status): void
+    {
+        if ($attendance->status === $status) {
+            throw ValidationException::withMessages([
+                'status' => 'O atendimento já está no status informado.',
+            ]);
+        }
     }
 }

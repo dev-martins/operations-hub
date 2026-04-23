@@ -164,7 +164,11 @@ class AttendanceApiTest extends TestCase
 
     public function test_it_changes_status_and_requires_resolution_notes_when_resolving(): void
     {
-        $user = $this->actingAsTenantUser();
+        $user = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'supervisor',
+            ]),
+        );
 
         $queue = OperationQueue::query()->create([
             'tenant_id' => $user->tenant_id,
@@ -207,6 +211,162 @@ class AttendanceApiTest extends TestCase
             'type' => 'status_changed',
             'created_by' => $user->id,
         ]);
+    }
+
+    public function test_it_rejects_status_transition_when_new_status_matches_the_current_one(): void
+    {
+        $actor = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'supervisor',
+            ]),
+        );
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $actor->tenant_id,
+            'name' => 'Suporte N2',
+            'code' => 'SUP-N2',
+            'active' => true,
+        ]);
+
+        $attendance = Attendance::query()->create([
+            'tenant_id' => $actor->tenant_id,
+            'protocol' => 'AT-500003Z',
+            'title' => 'Sem alteração efetiva de status',
+            'description' => 'Não deve registrar evento redundante.',
+            'type' => AttendanceType::INCIDENT,
+            'origin' => AttendanceOrigin::API,
+            'priority' => AttendancePriority::MEDIUM,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'opened_at' => now(),
+        ]);
+
+        $response = $this->patchJson("/api/v1/attendances/{$attendance->id}/status", [
+            'status' => AttendanceStatus::OPEN->value,
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
+
+        $this->assertDatabaseMissing('attendance_events', [
+            'attendance_id' => $attendance->id,
+            'type' => 'status_changed',
+        ]);
+    }
+
+    public function test_operator_can_update_status_when_attendance_is_unassigned(): void
+    {
+        $actor = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'operator',
+            ]),
+        );
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $actor->tenant_id,
+            'name' => 'Críticos',
+            'code' => 'CRT',
+            'active' => true,
+        ]);
+
+        $attendance = Attendance::query()->create([
+            'tenant_id' => $actor->tenant_id,
+            'protocol' => 'AT-500003A',
+            'title' => 'Fila aguardando resposta',
+            'description' => 'Necessita avanço operacional.',
+            'type' => AttendanceType::INCIDENT,
+            'origin' => AttendanceOrigin::API,
+            'priority' => AttendancePriority::HIGH,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'opened_at' => now(),
+        ]);
+
+        $response = $this->patchJson("/api/v1/attendances/{$attendance->id}/status", [
+            'status' => AttendanceStatus::IN_PROGRESS->value,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.status', AttendanceStatus::IN_PROGRESS->value);
+    }
+
+    public function test_operator_cannot_update_status_for_attendance_assigned_to_another_user(): void
+    {
+        $actor = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'operator',
+            ]),
+        );
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $actor->tenant_id,
+            'name' => 'Críticos',
+            'code' => 'CRT',
+            'active' => true,
+        ]);
+
+        $otherOperator = User::factory()->create([
+            'tenant_id' => $actor->tenant_id,
+        ]);
+
+        $attendance = Attendance::query()->create([
+            'tenant_id' => $actor->tenant_id,
+            'protocol' => 'AT-500003B',
+            'title' => 'Atendimento de outro operador',
+            'description' => 'Já está sob responsabilidade de outro analista.',
+            'type' => AttendanceType::INCIDENT,
+            'origin' => AttendanceOrigin::API,
+            'priority' => AttendancePriority::MEDIUM,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'assigned_to' => $otherOperator->id,
+            'opened_at' => now(),
+        ]);
+
+        $response = $this->patchJson("/api/v1/attendances/{$attendance->id}/status", [
+            'status' => AttendanceStatus::IN_PROGRESS->value,
+        ]);
+
+        $response->assertForbidden()
+            ->assertJsonPath('message', 'Este atendimento só pode ser atualizado pelo operador responsável ou pela supervisão.');
+    }
+
+    public function test_operator_cannot_resolve_attendance(): void
+    {
+        $actor = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'operator',
+            ]),
+        );
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $actor->tenant_id,
+            'name' => 'Críticos',
+            'code' => 'CRT',
+            'active' => true,
+        ]);
+
+        $attendance = Attendance::query()->create([
+            'tenant_id' => $actor->tenant_id,
+            'protocol' => 'AT-500003C',
+            'title' => 'Tentativa de resolução indevida',
+            'description' => 'Operador não deveria encerrar formalmente.',
+            'type' => AttendanceType::INCIDENT,
+            'origin' => AttendanceOrigin::API,
+            'priority' => AttendancePriority::HIGH,
+            'status' => AttendanceStatus::IN_PROGRESS,
+            'queue_id' => $queue->id,
+            'assigned_to' => $actor->id,
+            'opened_at' => now(),
+        ]);
+
+        $response = $this->patchJson("/api/v1/attendances/{$attendance->id}/status", [
+            'status' => AttendanceStatus::RESOLVED->value,
+            'resolution_notes' => 'Tentando concluir diretamente.',
+        ]);
+
+        $response->assertForbidden()
+            ->assertJsonPath('message', 'Usuário sem permissão para resolver atendimentos.');
     }
 
     public function test_it_assigns_an_attendance_to_a_user(): void
@@ -294,5 +454,160 @@ class AttendanceApiTest extends TestCase
 
         $response->assertForbidden()
             ->assertJsonPath('required_permission', 'attendances.assign');
+    }
+
+    public function test_it_blocks_assignment_for_terminal_attendances(): void
+    {
+        $actor = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'supervisor',
+            ]),
+        );
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $actor->tenant_id,
+            'name' => 'Suporte N1',
+            'code' => 'SUP-N1',
+            'active' => true,
+        ]);
+
+        $assignee = User::factory()->create([
+            'tenant_id' => $actor->tenant_id,
+        ]);
+
+        $attendance = Attendance::query()->create([
+            'tenant_id' => $actor->tenant_id,
+            'protocol' => 'AT-500006',
+            'title' => 'Atendimento encerrado',
+            'description' => 'Não deve ser redistribuído.',
+            'type' => AttendanceType::REQUEST,
+            'origin' => AttendanceOrigin::PORTAL,
+            'priority' => AttendancePriority::LOW,
+            'status' => AttendanceStatus::RESOLVED,
+            'queue_id' => $queue->id,
+            'opened_at' => now(),
+        ]);
+
+        $response = $this->patchJson("/api/v1/attendances/{$attendance->id}/assignment", [
+            'assigned_to' => $assignee->id,
+        ]);
+
+        $response->assertForbidden()
+            ->assertJsonPath('message', 'Atendimentos encerrados não podem ser reatribuídos.');
+    }
+
+    public function test_it_returns_not_found_when_trying_to_show_an_attendance_from_another_tenant(): void
+    {
+        $actor = $this->actingAsTenantUser();
+        $otherTenant = $this->createTenant([
+            'name' => 'Tenant Blindado',
+            'slug' => 'tenant-blindado',
+        ]);
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $otherTenant->id,
+            'name' => 'Fila externa',
+            'code' => 'EXT',
+            'active' => true,
+        ]);
+
+        $attendance = Attendance::query()->create([
+            'tenant_id' => $otherTenant->id,
+            'protocol' => 'AT-500007',
+            'title' => 'Atendimento de outro tenant',
+            'description' => 'Não deve ser visível.',
+            'type' => AttendanceType::INCIDENT,
+            'origin' => AttendanceOrigin::MANUAL,
+            'priority' => AttendancePriority::LOW,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'opened_at' => now(),
+        ]);
+
+        $response = $this->getJson("/api/v1/attendances/{$attendance->id}");
+
+        $response->assertNotFound();
+    }
+
+    public function test_it_returns_not_found_when_trying_to_update_status_from_another_tenant(): void
+    {
+        $actor = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'supervisor',
+            ]),
+        );
+        $otherTenant = $this->createTenant([
+            'name' => 'Tenant Blindado Status',
+            'slug' => 'tenant-blindado-status',
+        ]);
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $otherTenant->id,
+            'name' => 'Fila externa',
+            'code' => 'EXT-ST',
+            'active' => true,
+        ]);
+
+        $attendance = Attendance::query()->create([
+            'tenant_id' => $otherTenant->id,
+            'protocol' => 'AT-500008',
+            'title' => 'Status fora do tenant',
+            'description' => 'Não deve ser localizado para alteração.',
+            'type' => AttendanceType::INCIDENT,
+            'origin' => AttendanceOrigin::API,
+            'priority' => AttendancePriority::HIGH,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'opened_at' => now(),
+        ]);
+
+        $response = $this->patchJson("/api/v1/attendances/{$attendance->id}/status", [
+            'status' => AttendanceStatus::IN_PROGRESS->value,
+        ]);
+
+        $response->assertNotFound();
+    }
+
+    public function test_it_returns_not_found_when_trying_to_assign_attendance_from_another_tenant(): void
+    {
+        $actor = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'supervisor',
+            ]),
+        );
+        $otherTenant = $this->createTenant([
+            'name' => 'Tenant Blindado Assignment',
+            'slug' => 'tenant-blindado-assignment',
+        ]);
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $otherTenant->id,
+            'name' => 'Fila externa',
+            'code' => 'EXT-AS',
+            'active' => true,
+        ]);
+
+        $assignee = User::factory()->create([
+            'tenant_id' => $actor->tenant_id,
+        ]);
+
+        $attendance = Attendance::query()->create([
+            'tenant_id' => $otherTenant->id,
+            'protocol' => 'AT-500009',
+            'title' => 'Atribuição fora do tenant',
+            'description' => 'Não deve ser localizada para redistribuição.',
+            'type' => AttendanceType::REQUEST,
+            'origin' => AttendanceOrigin::PORTAL,
+            'priority' => AttendancePriority::MEDIUM,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'opened_at' => now(),
+        ]);
+
+        $response = $this->patchJson("/api/v1/attendances/{$attendance->id}/assignment", [
+            'assigned_to' => $assignee->id,
+        ]);
+
+        $response->assertNotFound();
     }
 }
