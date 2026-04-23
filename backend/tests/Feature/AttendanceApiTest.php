@@ -40,6 +40,8 @@ class AttendanceApiTest extends TestCase
             ->assertJsonPath('data.title', 'Falha de sincronização com ERP')
             ->assertJsonPath('data.tenant_id', $user->tenant_id)
             ->assertJsonPath('data.created_by', $user->id)
+            ->assertJsonPath('data.creator.id', $user->id)
+            ->assertJsonPath('data.creator.name', $user->name)
             ->assertJsonPath('data.status', AttendanceStatus::OPEN->value)
             ->assertJsonPath('data.queue.code', 'INT');
 
@@ -145,6 +147,7 @@ class AttendanceApiTest extends TestCase
             'priority' => AttendancePriority::CRITICAL,
             'status' => AttendanceStatus::OPEN,
             'queue_id' => $queue->id,
+            'created_by' => $user->id,
             'opened_at' => now(),
         ]);
 
@@ -159,6 +162,7 @@ class AttendanceApiTest extends TestCase
 
         $response->assertOk()
             ->assertJsonPath('data.protocol', 'AT-500002')
+            ->assertJsonPath('data.creator.id', $user->id)
             ->assertJsonPath('data.events.0.type', 'created');
     }
 
@@ -609,5 +613,49 @@ class AttendanceApiTest extends TestCase
         ]);
 
         $response->assertNotFound();
+    }
+
+    public function test_it_can_list_only_operational_attendances_when_requested(): void
+    {
+        $user = $this->actingAsTenantUser();
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'name' => 'Operacao',
+            'code' => 'OPE',
+            'active' => true,
+        ]);
+
+        Attendance::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'protocol' => 'AT-500008',
+            'title' => 'Ainda em fluxo',
+            'description' => 'Deve aparecer na fila operacional.',
+            'type' => AttendanceType::INCIDENT,
+            'origin' => AttendanceOrigin::MANUAL,
+            'priority' => AttendancePriority::MEDIUM,
+            'status' => AttendanceStatus::IN_PROGRESS,
+            'queue_id' => $queue->id,
+            'opened_at' => now(),
+        ]);
+
+        Attendance::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'protocol' => 'AT-500009',
+            'title' => 'Ja encerrado',
+            'description' => 'Nao deve aparecer na fila operacional.',
+            'type' => AttendanceType::REQUEST,
+            'origin' => AttendanceOrigin::PORTAL,
+            'priority' => AttendancePriority::LOW,
+            'status' => AttendanceStatus::RESOLVED,
+            'queue_id' => $queue->id,
+            'opened_at' => now(),
+        ]);
+
+        $response = $this->getJson('/api/v1/attendances?operational_only=1');
+
+        $response->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.protocol', 'AT-500008');
     }
 }

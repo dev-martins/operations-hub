@@ -48,6 +48,25 @@ Uma separação prática para começar:
 - cache deve ser aplicado como otimização, nunca como fonte de verdade
 - filas devem ser usadas para processamento desacoplado, não para esconder lentidão de fluxo síncrono mal modelado
 
+## Estratégia de evolução do acesso a dados
+
+No estado atual, o backend ainda usa Eloquent diretamente em alguns controllers para resolver recursos dentro do tenant autenticado. Isso não invalida a arquitetura do módulo porque:
+
+- a regra de negócio principal continua fora do controller
+- a autorização continua centralizada em `policy`
+- as transições operacionais seguem delegadas ao service
+
+O principal sinal de evolução aqui não é a simples presença de model no controller, mas a duplicação dos critérios de busca por tenant em mais de um ponto da aplicação.
+
+Por isso, a estratégia adotada para o projeto é:
+
+- não introduzir `Repository` genérico apenas por antecipação
+- extrair primeiro pontos únicos de leitura quando a duplicação começar a crescer
+- separar leitura e escrita de forma mais explícita quando os casos de uso pedirem
+- formalizar contratos de acesso a dados quando a abstração passar a proteger uma variação plausível da aplicação
+
+Essa decisão foi registrada em `docs/adr/002-evolucao-acesso-dados-atendimentos.md`.
+
 ## Temas transversais que já devem influenciar o desenho
 
 ### Multi-tenant
@@ -124,6 +143,7 @@ Entre os cenários já cobertos em teste estão:
 - bloqueio de resolução por papel sem permissão específica
 - bloqueio de reatribuição em atendimentos já encerrados
 - retorno `404` quando um recurso pertence a outro tenant
+- exclusão de atendimentos encerrados da fila operacional quando o recorte pede apenas itens em fluxo
 
 ## Etapa atual
 
@@ -133,6 +153,7 @@ Hoje o backend já saiu da fundação técnica e possui um primeiro fluxo operac
 - módulo de atendimentos com criação, listagem, detalhe, mudança de status e atribuição
 - ACL aplicada em rota e em recurso
 - eventos de domínio registrados a cada transição relevante
+- detalhe do atendimento distinguindo autor da abertura e responsável atual
 - testes de feature representativos do contrato público da API
 
 O próximo passo recomendado é expandir essa base para governança administrativa, filas e cobertura automatizada complementar, preservando o mesmo padrão de isolamento por tenant e autorização explícita.

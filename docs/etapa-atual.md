@@ -18,9 +18,12 @@ Primeiro módulo de domínio implementado com autenticação, contexto de tenant
 - ACL inicial com papéis, permissões e bloqueio de rotas no backend
 - reflexo de permissões no frontend com navegação e ações condicionadas
 - tela dedicada de atendimentos com paginação, detalhe e ações guiadas por ACL
+- fila operacional exibindo apenas atendimentos ainda em fluxo
+- detalhe do atendimento com identificação de quem abriu o registro para reforçar auditabilidade
 - testes de feature cobrindo autenticação, contrato da API, isolamento por tenant e regras críticas de ACL
 - documentação do módulo em `docs/modulos/atendimentos-inicial.md`
 - documentação da ACL inicial em `docs/modulos/acl-inicial.md`
+- ADR da estratégia de evolução de acesso a dados em `docs/adr/002-evolucao-acesso-dados-atendimentos.md`
 - README público neutro
 - estrutura de `docs/` preparada para crescer
 
@@ -40,6 +43,8 @@ Isso cria evidência real de que o projeto já sustenta:
 - negação explícita de ações quando o recurso não pertence ao tenant autenticado
 - bloqueio de mudança de status, resolução e reatribuição em cenários indevidos
 - proteção do frontend por ACL refletida a partir do payload autenticado
+- distinção entre autoria de abertura e responsabilidade operacional atual
+- recorte operacional coerente, sem misturar itens encerrados à fila ativa
 
 ## Próximo passo recomendado
 
@@ -78,6 +83,7 @@ Cenários já cobertos no backend:
 - bloqueio de atualização por operador que não é responsável pelo atendimento
 - bloqueio de resolução por papel sem permissão
 - bloqueio de reatribuição em atendimento encerrado
+- listagem operacional ignorando atendimentos encerrados
 - retorno `404` para recursos de outro tenant
 
 Neste projeto, a execução dos testes continua sendo feita somente dentro do Docker e usando o banco de testes isolado do ambiente containerizado:

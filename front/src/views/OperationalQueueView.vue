@@ -96,6 +96,7 @@ const hasUsers = computed(() => users.value.length > 0)
 const requiresResolutionNotes = computed(() => statusForm.status === 'resolved')
 const detailEvents = computed(() => selectedAttendance.value?.events ?? [])
 const assigneeName = computed(() => selectedAttendance.value?.assignee?.name ?? 'Não atribuído')
+const creatorName = computed(() => selectedAttendance.value?.creator?.name ?? 'Não identificado')
 const canCreateAttendance = computed(() => hasPermission('attendances.create'))
 const {
   assignmentPermissionMessage,
@@ -146,7 +147,10 @@ const loadAttendances = async () => {
   const activeFilters = Object.fromEntries(
     Object.entries(filters).filter(([, value]) => value !== ''),
   )
-  const data = await fetchAttendances(activeFilters)
+  const data = await fetchAttendances({
+    ...activeFilters,
+    operational_only: true,
+  })
 
   attendances.value = data.data
 
@@ -516,6 +520,10 @@ onMounted(async () => {
               <div>
                 <small class="detail-label">Responsável</small>
                 <strong class="d-block">{{ assigneeName }}</strong>
+              </div>
+              <div>
+                <small class="detail-label">Aberto por</small>
+                <strong class="d-block">{{ creatorName }}</strong>
               </div>
               <div>
                 <small class="detail-label">Abertura</small>

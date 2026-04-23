@@ -50,6 +50,19 @@ class QueueApiTest extends TestCase
             'opened_at' => now(),
         ]);
 
+        Attendance::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'protocol' => 'AT-600002',
+            'title' => 'Atendimento encerrado',
+            'description' => 'Nao deve entrar na contagem operacional.',
+            'type' => AttendanceType::REQUEST,
+            'origin' => AttendanceOrigin::PORTAL,
+            'priority' => AttendancePriority::LOW,
+            'status' => AttendanceStatus::RESOLVED,
+            'queue_id' => $queue->id,
+            'opened_at' => now(),
+        ]);
+
         $response = $this->getJson('/api/v1/queues');
 
         $response->assertOk()

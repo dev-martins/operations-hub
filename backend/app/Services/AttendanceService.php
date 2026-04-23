@@ -54,7 +54,7 @@ class AttendanceService
                 ]);
             }
 
-            return $attendance->load(['queue', 'events', 'assignee']);
+            return $attendance->load(['queue', 'events', 'assignee', 'creator']);
         });
     }
 
@@ -95,7 +95,7 @@ class AttendanceService
                 'created_at' => now(),
             ]);
 
-            return $attendance->fresh(['queue', 'events', 'assignee']);
+            return $attendance->fresh(['queue', 'events', 'assignee', 'creator']);
         });
     }
 
@@ -117,7 +117,7 @@ class AttendanceService
                 'created_at' => now(),
             ]);
 
-            return $attendance->fresh(['queue', 'events', 'assignee']);
+            return $attendance->fresh(['queue', 'events', 'assignee', 'creator']);
         });
     }
 

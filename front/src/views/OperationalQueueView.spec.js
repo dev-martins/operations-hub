@@ -58,6 +58,7 @@ const attendanceDetail = {
   title: 'Integração sem retorno',
   description: 'Endpoint legado indisponível.',
   queue: { name: 'Suporte N1' },
+  creator: { id: 4, name: 'Alice Admin', email: 'alice.admin@example.com', role: 'admin' },
   assignee: null,
   assigned_to: null,
   status: 'open',
@@ -108,7 +109,10 @@ describe('OperationalQueueView', () => {
     const wrapper = await mountView()
 
     expect(wrapper.text()).toContain('A reatribuição de atendimentos fica disponível apenas para supervisão e administração.')
+    expect(wrapper.text()).toContain('Aberto por')
+    expect(wrapper.text()).toContain('Alice Admin')
     expect(wrapper.find('[data-testid="assignment-select"]').exists()).toBe(false)
+    expect(attendanceServiceMocks.fetchAttendances).toHaveBeenCalledWith({ operational_only: true })
   })
 
   it('exibe lista vazia quando a API não retorna atendimentos', async () => {
