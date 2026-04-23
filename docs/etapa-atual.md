@@ -19,6 +19,8 @@ Primeiro módulo de domínio implementado com autenticação, contexto de tenant
 - reflexo de permissões no frontend com navegação e ações condicionadas
 - tela dedicada de atendimentos com paginação, detalhe e ações guiadas por ACL
 - modularização do frontend de atendimentos em componentes, composables e constantes por domínio
+- catálogo administrativo de filas com criação e edição no tenant
+- painel de ACL com leitura da matriz, resumo por papel e alteração de papel de usuários do tenant
 - fila operacional exibindo apenas atendimentos ainda em fluxo
 - detalhe do atendimento com identificação de quem abriu o registro para reforçar auditabilidade
 - testes de feature cobrindo autenticação, contrato da API, isolamento por tenant e regras críticas de ACL
@@ -37,7 +39,7 @@ Primeiro módulo de domínio implementado com autenticação, contexto de tenant
 
 ## Leitura da fase atual
 
-O projeto já demonstra um fluxo operacional protegido por autenticação, contexto inicial de tenant, ACL aplicada em rotas e ações da interface e uma visão dedicada de atendimentos orientada ao domínio. O ponto mais importante desta fase é que autorização e qualidade automatizada deixaram de ser promessa arquitetural: hoje já existem permissões aplicadas no backend, rules por recurso no atendimento e testes cobrindo cenários positivos e negativos do contrato público.
+O projeto já demonstra um fluxo operacional protegido por autenticação, contexto inicial de tenant, ACL aplicada em rotas e ações da interface e uma visão dedicada de atendimentos orientada ao domínio. Nesta evolução, a autorização deixou de ser apenas proteção do fluxo transacional e passou a governar também catálogos administrativos reais do tenant, como filas operacionais e distribuição de papéis de acesso.
 
 Isso cria evidência real de que o projeto já sustenta:
 
@@ -47,18 +49,20 @@ Isso cria evidência real de que o projeto já sustenta:
 - proteção do frontend por ACL refletida a partir do payload autenticado
 - distinção entre autoria de abertura e responsabilidade operacional atual
 - recorte operacional coerente, sem misturar itens encerrados à fila ativa
+- manutenção do catálogo de filas sem sair do contexto multi-tenant
+- atualização controlada de papel de usuários com restrição explícita para evitar autoalteração indevida
 
 ## Próximo passo recomendado
 
-Com a tela de atendimentos já modularizada e coberta por testes de frontend, o avanço mais coerente agora é:
+Com filas e governança administrativa já materializadas no backend e no frontend, o avanço mais coerente agora é:
 
-1. preparar a próxima etapa de filas, usuários e governança administrativa
-2. ampliar regras de autorização por recurso e catálogos administrativos no backend e no frontend
-3. só depois abrir pipeline CI/CD sobre essa base funcional mais estável
+1. configurar pipeline CI/CD com testes automatizados e critérios mínimos de qualidade
+2. aprofundar policies e regras de autorização por recurso para módulos administrativos
+3. avaliar a introdução de estado compartilhado mais explícito no frontend quando múltiplas telas administrativas passarem a reutilizar o mesmo contexto
 
 ## Leitura recomendada para a próxima fase
 
-A próxima etapa não deve priorizar nova infraestrutura. O valor agora está em provar regras de autorização mais finas, ampliar a consistência arquitetural da ACL e fortalecer qualidade automatizada sobre o domínio já autenticado.
+A próxima etapa já pode abrir infraestrutura de qualidade, porque a base funcional deixou de ser apenas um módulo isolado e passou a incluir governança operacional concreta.
 
 O módulo atual já permite:
 
@@ -69,6 +73,8 @@ O módulo atual já permite:
 - exibir essa fila no frontend
 - atualizar status
 - atribuir responsável
+- administrar filas do tenant
+- redistribuir papéis de acesso no tenant com governança explícita
 
 O próximo passo é fazer esse fluxo operar com governança mais detalhada por recurso, para que a evolução para tenant mais robusto, integrações e CI/CD aconteça sobre uma base funcional real.
 
@@ -87,6 +93,9 @@ Cenários já cobertos no backend:
 - bloqueio de reatribuição em atendimento encerrado
 - listagem operacional ignorando atendimentos encerrados
 - retorno `404` para recursos de outro tenant
+- criação e atualização de filas apenas para papel com `queues.manage`
+- atualização de papel de usuário apenas para papel com `acl.manage`
+- bloqueio de alteração do próprio papel na governança administrativa
 
 Cenários já cobertos no frontend:
 
@@ -96,10 +105,15 @@ Cenários já cobertos no frontend:
 - filtros da visão dedicada
 - formulários de status e atribuição
 - sessão autenticada, roteamento protegido e fluxo de login
+- estado bloqueado da governança de filas sem permissão administrativa
+- criação e edição de filas na visão administrativa
+- governança do tenant na tela de ACL com atualização de papel e modo somente leitura
 
 Neste projeto, a execução dos testes continua sendo feita somente dentro do Docker e usando o banco de testes isolado do ambiente containerizado:
 
 ```bash
 docker compose up -d
 docker compose exec backend composer test
+docker compose run --rm --entrypoint sh front -lc "npm test"
+docker compose run --rm --entrypoint sh front -lc "npm run build"
 ```

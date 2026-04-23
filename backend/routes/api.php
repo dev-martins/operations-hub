@@ -37,7 +37,10 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/auth/acl', [AclController::class, 'index'])->middleware('permission:acl.view');
 
         Route::get('/queues', [QueueController::class, 'index'])->middleware('permission:queues.view');
+        Route::post('/queues', [QueueController::class, 'store'])->middleware('permission:queues.manage');
+        Route::patch('/queues/{queue}', [QueueController::class, 'update'])->middleware('permission:queues.manage');
         Route::get('/users', [UserController::class, 'index'])->middleware('permission:users.view');
+        Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->middleware('permission:acl.manage');
         Route::get('/attendances', [AttendanceController::class, 'index'])->middleware('permission:attendances.view');
         Route::post('/attendances', [AttendanceController::class, 'store'])->middleware('permission:attendances.create');
         Route::get('/attendances/{attendance}', [AttendanceController::class, 'show'])->middleware('permission:attendances.view');
