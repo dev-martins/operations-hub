@@ -57,6 +57,27 @@ O frontend passou a usar as permissões retornadas pelo backend para:
 - esconder ações de criação, atualização de status e atribuição quando o papel não pode executá-las
 - apresentar uma tela de ACL com a matriz de papéis e permissões
 
+## Seeders para demonstração
+
+Esta etapa agora deixa o ambiente local com usuários previsíveis para cada papel de ACL por meio de `backend/database/seeders/AclUserSeeder.php`.
+
+Usuários criados no tenant inicial:
+
+- `alice.admin@example.com` com papel `admin`
+- `sofia.supervisor@example.com` com papel `supervisor`
+- `otavio.operator@example.com` com papel `operator`
+- `vera.viewer@example.com` com papel `viewer`
+
+Senha padrão do ambiente local:
+
+- `password`
+
+Essa base facilita:
+
+- validar a diferença de navegação entre papéis
+- demonstrar a tela de ACL sem depender de criação manual de usuários
+- testar rapidamente negação e permissão no frontend e na API
+
 ## Testes
 
 Os testes de feature passaram a cobrir:

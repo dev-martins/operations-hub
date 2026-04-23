@@ -29,24 +29,17 @@ class DatabaseSeeder extends Seeder
             'active' => true,
         ]);
 
-        $user = User::query()->firstOrCreate([
-            'email' => 'test@example.com',
-        ], [
-            'tenant_id' => $tenant->id,
-            'name' => 'Test User',
-            'password' => bcrypt('password'),
-            'role' => 'admin',
-        ]);
-
-        $user->forceFill([
-            'tenant_id' => $tenant->id,
-            'role' => $user->role ?: 'admin',
-        ])->save();
-
         $this->call([
+            AclUserSeeder::class,
             PassportClientSeeder::class,
             OperationQueueSeeder::class,
         ]);
+
+        $user = User::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('role', 'admin')
+            ->orderBy('id')
+            ->firstOrFail();
 
         if (Attendance::query()->exists()) {
             return;
@@ -89,7 +82,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($attendances as $attendance) {
             $record = Attendance::query()->create([
-                'tenant_id' => 1,
+                'tenant_id' => $tenant->id,
                 'protocol' => $attendance['protocol'],
                 'title' => $attendance['title'],
                 'description' => $attendance['description'],
@@ -105,7 +98,7 @@ class DatabaseSeeder extends Seeder
             ]);
 
             $record->events()->create([
-                'tenant_id' => 1,
+                'tenant_id' => $tenant->id,
                 'type' => 'created',
                 'description' => 'Atendimento gerado pelo seeder inicial.',
                 'metadata' => [
