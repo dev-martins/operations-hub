@@ -110,13 +110,29 @@ Uma boa leitura sobre o frontend deste projeto deve mostrar que:
 
 ## Etapa atual
 
-Hoje o frontend já possui uma dashboard inicial baseada em Adminator e um consumo simples do endpoint de status da API. Ainda faltam:
+Hoje o frontend já sustenta um módulo operacional real com:
 
-- roteamento real
-- estrutura formal de estado
-- módulos de domínio
-- autenticação
-- navegação condicionada por permissões
-- documentação de decisões por fluxo implementado
+- autenticação inicial e hidratação da sessão
+- tenant e permissões carregados a partir do payload autenticado
+- navegação condicionada por ACL
+- rota dedicada de atendimentos
+- filtros, paginação e detalhe do atendimento
+- formulários de status e atribuição refletindo regras de permissão
+- testes automatizados para store, roteamento, composables, views e componentes críticos do módulo
 
-O próximo passo recomendado é iniciar o primeiro módulo de domínio com uma estrutura explícita de `views`, `services` e `stores`.
+Na evolução mais recente, o módulo de atendimentos foi reorganizado para deixar explícita a separação entre:
+
+- `views`: composição da tela dedicada de atendimentos
+- `components/attendances`: blocos visuais reutilizáveis do fluxo operacional
+- `modules/attendances/composables`: orquestração do estado local da tela, carregamento remoto e ações do domínio
+- `modules/attendances/constants`: opções de filtros, tons visuais e formatação compartilhada do domínio
+- `services`: acesso HTTP centralizado aos endpoints da API
+
+Essa organização foi escolhida para evitar uma `view` monolítica e tornar mais fácil testar:
+
+- renderização condicional por seleção de atendimento
+- estados bloqueados por ACL
+- filtros e paginação
+- feedback visual após ações de status e atribuição
+
+O próximo passo recomendado, a partir dessa base, é aprofundar o estado compartilhado entre fluxos operacionais e abrir a frente de governança administrativa para filas, usuários e permissões.

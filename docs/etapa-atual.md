@@ -18,9 +18,11 @@ Primeiro módulo de domínio implementado com autenticação, contexto de tenant
 - ACL inicial com papéis, permissões e bloqueio de rotas no backend
 - reflexo de permissões no frontend com navegação e ações condicionadas
 - tela dedicada de atendimentos com paginação, detalhe e ações guiadas por ACL
+- modularização do frontend de atendimentos em componentes, composables e constantes por domínio
 - fila operacional exibindo apenas atendimentos ainda em fluxo
 - detalhe do atendimento com identificação de quem abriu o registro para reforçar auditabilidade
 - testes de feature cobrindo autenticação, contrato da API, isolamento por tenant e regras críticas de ACL
+- testes de frontend cobrindo filtros, formulários, permissões, estados bloqueados e renderização condicional do módulo
 - documentação do módulo em `docs/modulos/atendimentos-inicial.md`
 - documentação da ACL inicial em `docs/modulos/acl-inicial.md`
 - ADR da estratégia de evolução de acesso a dados em `docs/adr/002-evolucao-acesso-dados-atendimentos.md`
@@ -48,11 +50,11 @@ Isso cria evidência real de que o projeto já sustenta:
 
 ## Próximo passo recomendado
 
-O avanço mais coerente agora é:
+Com a tela de atendimentos já modularizada e coberta por testes de frontend, o avanço mais coerente agora é:
 
-1. modularizar o frontend de atendimentos em componentes, composables e serviços por domínio
-2. introduzir testes de frontend para permissões, estados bloqueados e renderização condicional
-3. preparar a próxima etapa de filas, usuários e governança administrativa
+1. preparar a próxima etapa de filas, usuários e governança administrativa
+2. ampliar regras de autorização por recurso e catálogos administrativos no backend e no frontend
+3. só depois abrir pipeline CI/CD sobre essa base funcional mais estável
 
 ## Leitura recomendada para a próxima fase
 
@@ -85,6 +87,15 @@ Cenários já cobertos no backend:
 - bloqueio de reatribuição em atendimento encerrado
 - listagem operacional ignorando atendimentos encerrados
 - retorno `404` para recursos de outro tenant
+
+Cenários já cobertos no frontend:
+
+- renderização condicional da tela de atendimentos
+- estado vazio do detalhe e da timeline
+- bloqueio visual por ACL em mudança de status e reatribuição
+- filtros da visão dedicada
+- formulários de status e atribuição
+- sessão autenticada, roteamento protegido e fluxo de login
 
 Neste projeto, a execução dos testes continua sendo feita somente dentro do Docker e usando o banco de testes isolado do ambiente containerizado:
 
