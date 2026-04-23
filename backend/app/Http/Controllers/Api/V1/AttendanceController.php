@@ -48,9 +48,11 @@ class AttendanceController extends Controller
 
     public function show(int $attendance, Request $request): AttendanceResource
     {
+        $record = $this->findAttendanceForTenant($attendance, $request->user()->tenant_id);
+        $this->authorize('view', $record);
+
         return AttendanceResource::make(
-            $this->findAttendanceForTenant($attendance, $request->user()->tenant_id)
-                ->load(['queue', 'events', 'assignee'])
+            $record->load(['queue', 'events', 'assignee'])
         );
     }
 

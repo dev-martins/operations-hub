@@ -12,6 +12,12 @@ export const fetchCurrentUser = async () => {
   return data.data
 }
 
+export const fetchAclOverview = async () => {
+  const { data } = await api.get('/v1/auth/acl')
+
+  return data.data
+}
+
 export const logoutRequest = async () => {
   const { data } = await api.post('/v1/auth/logout')
 

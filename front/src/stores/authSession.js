@@ -88,4 +88,10 @@ export const authState = state
 
 export const isAuthenticated = computed(() => Boolean(state.accessToken && state.user))
 
+export const authPermissions = computed(() => state.user?.permissions ?? [])
+
+export const hasPermission = (permission) => {
+  return authPermissions.value.some(({ key }) => key === permission)
+}
+
 export const getAccessToken = () => state.accessToken ?? readAccessToken()

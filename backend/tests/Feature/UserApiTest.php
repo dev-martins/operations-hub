@@ -11,7 +11,11 @@ class UserApiTest extends TestCase
 
     public function test_it_lists_only_users_for_the_authenticated_tenant(): void
     {
-        $user = $this->actingAsTenantUser();
+        $user = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'supervisor',
+            ]),
+        );
 
         $this->createUserForTenant($user->tenant, [
             'name' => 'Bruna Operacoes',
@@ -39,5 +43,19 @@ class UserApiTest extends TestCase
         $response->assertOk()
             ->assertJsonCount(3, 'data')
             ->assertJsonMissing(['email' => 'externo@example.com']);
+    }
+
+    public function test_it_blocks_user_listing_for_roles_without_permission(): void
+    {
+        $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'operator',
+            ]),
+        );
+
+        $response = $this->getJson('/api/v1/users');
+
+        $response->assertForbidden()
+            ->assertJsonPath('required_permission', 'users.view');
     }
 }
