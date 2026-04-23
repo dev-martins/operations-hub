@@ -12,8 +12,10 @@ final class AclCatalogue
         return match ($role) {
             Role::Admin => [
                 Permission::AclView,
+                Permission::AclManage,
                 Permission::UsersView,
                 Permission::QueuesView,
+                Permission::QueuesManage,
                 Permission::AttendancesView,
                 Permission::AttendancesCreate,
                 Permission::AttendancesUpdateStatus,
@@ -89,5 +91,20 @@ final class AclCatalogue
             'label' => $permission->label(),
             'description' => $permission->description(),
         ];
+    }
+
+    /**
+     * @return array<int, array<string, string>>
+     */
+    public static function manageableRoleDefinitions(): array
+    {
+        return array_map(
+            fn (Role $role): array => [
+                'key' => $role->value,
+                'label' => $role->label(),
+                'description' => $role->description(),
+            ],
+            Role::cases(),
+        );
     }
 }

@@ -1,10 +1,16 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { authState } from '../stores/authSession'
+import { authState, hasPermission } from '../stores/authSession'
 import { fetchAclOverview } from '../services/authService'
+import { updateUserRole } from '../services/governanceService'
 
 const loading = ref(true)
 const aclData = ref(null)
+const actionErrors = ref({})
+const actionFeedback = ref('')
+const updatingUserId = ref(null)
+
+const canManageAcl = () => hasPermission('acl.manage')
 
 const loadAclOverview = async () => {
   loading.value = true
@@ -13,6 +19,23 @@ const loadAclOverview = async () => {
     aclData.value = await fetchAclOverview()
   } finally {
     loading.value = false
+  }
+}
+
+const submitRoleUpdate = async (userId, role) => {
+  actionErrors.value = {}
+  actionFeedback.value = ''
+  updatingUserId.value = userId
+
+  try {
+    await updateUserRole(userId, { role })
+    actionFeedback.value = 'Papel atualizado com sucesso.'
+    await loadAclOverview()
+  } catch (error) {
+    actionErrors.value = error.response?.data?.errors ?? {}
+    actionFeedback.value = error.response?.data?.message ?? 'Não foi possível atualizar o papel.'
+  } finally {
+    updatingUserId.value = null
   }
 }
 
@@ -30,7 +53,7 @@ onMounted(async () => {
           <span class="section-kicker">governança</span>
         </div>
         <p class="mB-0 c-grey-700">
-          Papéis e permissões iniciais usados para controlar visibilidade de rotas e ações do tenant atual.
+          Papéis, permissões e distribuição do tenant atual para sustentar governança operacional explícita.
         </p>
       </div>
     </div>
@@ -114,6 +137,105 @@ onMounted(async () => {
                   {{ permission.label }}
                 </span>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12">
+      <div class="bd bgc-white p-20">
+        <div class="d-flex jc-sb ai-c mB-20">
+          <div>
+            <h5 class="mB-5">Governança do tenant</h5>
+            <p class="mB-0 c-grey-700">
+              Usuários, papéis e distribuição operacional para o tenant autenticado.
+            </p>
+          </div>
+          <span class="section-kicker">{{ aclData?.tenant_users?.length ?? 0 }} usuários</span>
+        </div>
+
+        <div v-if="actionFeedback" class="action-feedback mB-20">
+          {{ actionFeedback }}
+        </div>
+
+        <div v-if="loading" class="empty-state compact">
+          Carregando governança do tenant...
+        </div>
+
+        <div v-else-if="aclData" class="row">
+          <div class="col-lg-4 mB-20">
+            <div class="detail-card h-100">
+              <h6 class="mB-15">Resumo por papel</h6>
+              <div class="detail-stack">
+                <div
+                  v-for="role in aclData.role_summary"
+                  :key="role.key"
+                  class="d-flex jc-sb ai-c"
+                >
+                  <div>
+                    <strong class="d-block">{{ role.label }}</strong>
+                    <small class="c-grey-600">{{ role.description }}</small>
+                  </div>
+                  <span class="ticket-tag is-info">{{ role.users_count }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-lg-8">
+            <div v-if="aclData.tenant_users.length === 0" class="empty-state compact">
+              Nenhum usuário carregado para o tenant atual.
+            </div>
+
+            <div v-else class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Usuário</th>
+                    <th>Papel atual</th>
+                    <th>Permissões</th>
+                    <th>Ação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="user in aclData.tenant_users" :key="user.id">
+                    <td>
+                      <strong class="d-block">{{ user.name }}</strong>
+                      <small class="c-grey-600">{{ user.email }}</small>
+                    </td>
+                    <td>
+                      <span class="ticket-tag is-ok">{{ user.role_context.label }}</span>
+                    </td>
+                    <td>
+                      <small class="c-grey-600">{{ user.permissions.length }} permissões ativas</small>
+                    </td>
+                    <td>
+                      <template v-if="canManageAcl()">
+                        <select
+                          class="form-control"
+                          data-testid="acl-role-select"
+                          :disabled="updatingUserId === user.id"
+                          :value="user.role"
+                          @change="submitRoleUpdate(user.id, $event.target.value)"
+                        >
+                          <option
+                            v-for="role in aclData.manageable_roles"
+                            :key="role.key"
+                            :value="role.key"
+                          >
+                            {{ role.label }}
+                          </option>
+                        </select>
+                        <small v-if="actionErrors.role" class="field-error">{{ actionErrors.role[0] }}</small>
+                      </template>
+                      <small v-else class="c-grey-600">
+                        Somente administração operacional pode alterar papéis.
+                      </small>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

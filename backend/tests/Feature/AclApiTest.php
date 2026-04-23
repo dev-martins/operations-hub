@@ -11,17 +11,22 @@ class AclApiTest extends TestCase
 
     public function test_it_returns_the_acl_catalogue_for_authorized_roles(): void
     {
-        $this->actingAsTenantUser(
-            $this->createUserForTenant(attributes: [
-                'role' => 'supervisor',
-            ]),
-        );
+        $supervisor = $this->createUserForTenant(attributes: [
+            'role' => 'supervisor',
+        ]);
+        $this->createUserForTenant($supervisor->tenant, [
+            'role' => 'admin',
+            'email' => 'admin.governanca@example.com',
+        ]);
+
+        $this->actingAsTenantUser($supervisor);
 
         $response = $this->getJson('/api/v1/auth/acl');
 
         $response->assertOk()
             ->assertJsonPath('data.current_user.role.key', 'supervisor')
             ->assertJsonPath('data.roles.0.key', 'admin')
+            ->assertJsonPath('data.role_summary.0.key', 'admin')
             ->assertJsonFragment([
                 'key' => 'attendances.assign',
                 'label' => 'Atribuir atendimentos',

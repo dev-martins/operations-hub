@@ -116,11 +116,18 @@ Hoje o frontend já sustenta um módulo operacional real com:
 - tenant e permissões carregados a partir do payload autenticado
 - navegação condicionada por ACL
 - rota dedicada de atendimentos
+- rota dedicada de filas com governança administrativa
+- rota dedicada de ACL com resumo de papéis e usuários do tenant
 - filtros, paginação e detalhe do atendimento
 - formulários de status e atribuição refletindo regras de permissão
 - testes automatizados para store, roteamento, composables, views e componentes críticos do módulo
 
-Na evolução mais recente, o módulo de atendimentos foi reorganizado para deixar explícita a separação entre:
+Na evolução mais recente, o frontend passou a combinar dois movimentos complementares:
+
+- reorganização do módulo de atendimentos para reduzir acoplamento da view principal
+- introdução de telas administrativas de filas e ACL consumindo novos endpoints de governança
+
+No estado atual, fica explícita a separação entre:
 
 - `views`: composição da tela dedicada de atendimentos
 - `components/attendances`: blocos visuais reutilizáveis do fluxo operacional
@@ -135,4 +142,4 @@ Essa organização foi escolhida para evitar uma `view` monolítica e tornar mai
 - filtros e paginação
 - feedback visual após ações de status e atribuição
 
-O próximo passo recomendado, a partir dessa base, é aprofundar o estado compartilhado entre fluxos operacionais e abrir a frente de governança administrativa para filas, usuários e permissões.
+O próximo passo recomendado, a partir dessa base, é decidir quando o contexto administrativo já justifica estado compartilhado mais explícito e preparar a aplicação para pipeline CI/CD com validação automatizada da SPA.

@@ -14,8 +14,10 @@ Formalizar a primeira camada de papéis e permissões da central operacional par
 ## Permissões iniciais
 
 - `acl.view`
+- `acl.manage`
 - `users.view`
 - `queues.view`
+- `queues.manage`
 - `attendances.view`
 - `attendances.create`
 - `attendances.update_status`
@@ -41,7 +43,10 @@ Essa escolha evita espalhar matrizes de acesso por controllers e permite:
 
 - `GET /api/v1/auth/acl` exige `acl.view`
 - `GET /api/v1/users` exige `users.view`
+- `PATCH /api/v1/users/{id}/role` exige `acl.manage`
 - `GET /api/v1/queues` exige `queues.view`
+- `POST /api/v1/queues` exige `queues.manage`
+- `PATCH /api/v1/queues/{id}` exige `queues.manage`
 - `GET /api/v1/attendances` e `GET /api/v1/attendances/{id}` exigem `attendances.view`
 - `POST /api/v1/attendances` exige `attendances.create`
 - `PATCH /api/v1/attendances/{id}/status` exige `attendances.update_status`
@@ -72,6 +77,9 @@ O frontend passou a usar as permissões retornadas pelo backend para:
 - mostrar o papel atual no topo da aplicação
 - esconder ações de criação, atualização de status e atribuição quando o papel não pode executá-las
 - apresentar uma tela de ACL com a matriz de papéis e permissões
+- apresentar resumo por papel e lista de usuários do tenant na tela de ACL
+- bloquear ou liberar edição de filas conforme `queues.manage`
+- bloquear ou liberar mudança de papel de usuários conforme `acl.manage`
 
 ## Seeders para demonstração
 
@@ -102,6 +110,9 @@ Os testes de feature passaram a cobrir:
 - acesso autorizado à visão de ACL
 - bloqueio da visão de ACL para papéis sem `acl.view`
 - bloqueio da listagem de usuários para papéis sem `users.view`
+- bloqueio do gerenciamento de filas para papéis sem `queues.manage`
+- atualização de papel de usuário apenas para perfis com `acl.manage`
+- bloqueio de alteração do próprio papel na governança administrativa
 - bloqueio da atribuição de atendimento para papéis sem `attendances.assign`
 - bloqueio da alteração de status quando o operador não é o responsável
 - bloqueio de resolução por operador
@@ -128,5 +139,5 @@ docker compose exec backend composer test
 
 - separar permissões de supervisão e administração com mais granularidade
 - expandir o uso de policies por recurso para outros módulos além de atendimentos
-- aprofundar ACL também nas telas dedicadas de filas e governança administrativa
-- cobrir o frontend com testes automatizados quando a infraestrutura de teste da SPA entrar no projeto
+- registrar trilha de auditoria para mudanças administrativas de papel e fila
+- aprofundar governança de usuários além do papel, incluindo status operacional e eventual vínculo com equipes
