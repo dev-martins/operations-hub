@@ -59,4 +59,31 @@ describe('router guards', () => {
 
     expect(router.currentRoute.value.name).toBe('operational-queue')
   })
+
+  it('permite rota protegida quando a sessão é reidratada durante o bootstrap', async () => {
+    authSessionMock.initializeAuthSession.mockImplementation(async () => {
+      authSessionMock.isAuthenticated.value = true
+    })
+    authSessionMock.hasPermission.mockImplementation((permission) => permission === 'queues.view')
+
+    const router = await loadRouter()
+
+    await router.push('/filas')
+
+    expect(authSessionMock.initializeAuthSession).toHaveBeenCalled()
+    expect(router.currentRoute.value.name).toBe('queues')
+  })
+
+  it('redireciona para a fila quando autentica no bootstrap mas continua sem permissão', async () => {
+    authSessionMock.initializeAuthSession.mockImplementation(async () => {
+      authSessionMock.isAuthenticated.value = true
+    })
+    authSessionMock.hasPermission.mockImplementation((permission) => permission === 'attendances.view')
+
+    const router = await loadRouter()
+
+    await router.push('/acl')
+
+    expect(router.currentRoute.value.name).toBe('operational-queue')
+  })
 })

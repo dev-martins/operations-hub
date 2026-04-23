@@ -18,6 +18,7 @@ const authSessionMock = vi.hoisted(() => ({
     user: null,
     tenant: null,
   },
+  stateRef: null,
   clearAuthSession: vi.fn(),
   hasPermission: vi.fn(),
   initializeAuthSession: vi.fn(),
@@ -43,6 +44,7 @@ vi.mock('./services/attendanceService', () => attendanceServiceMocks)
 vi.mock('./stores/authSession', async () => {
   const { computed, reactive } = await import('vue')
   const authState = reactive(authSessionMock.rawState)
+  authSessionMock.stateRef = authState
 
   return {
     authState,
@@ -119,11 +121,11 @@ describe('App', () => {
   beforeEach(() => {
     sidebarMock.state.instances.length = 0
     document.body.className = ''
-    authSessionMock.rawState.user = {
+    authSessionMock.stateRef.user = {
       name: 'Alice Admin',
       role_context: { label: 'Administrador' },
     }
-    authSessionMock.rawState.tenant = { name: 'Tenant Demo' }
+    authSessionMock.stateRef.tenant = { name: 'Tenant Demo' }
 
     authSessionMock.clearAuthSession.mockReset()
     authSessionMock.logout.mockReset()
@@ -184,5 +186,25 @@ describe('App', () => {
 
     expect(authSessionMock.logout).toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('login')
+  })
+
+  it('reflete dados reidratados quando a sessão é recuperada no mount da aplicação', async () => {
+    authSessionMock.stateRef.user = null
+    authSessionMock.stateRef.tenant = null
+    authSessionMock.initializeAuthSession.mockImplementation(async () => {
+      authSessionMock.stateRef.user = {
+        name: 'Sofia Supervisor',
+        role_context: { label: 'Supervisora' },
+      }
+      authSessionMock.stateRef.tenant = {
+        name: 'Tenant Reidratado',
+      }
+    })
+
+    const { wrapper } = await mountAppAt('/operacional/fila')
+
+    expect(wrapper.text()).toContain('Sofia Supervisor')
+    expect(wrapper.text()).toContain('Supervisora')
+    expect(wrapper.text()).toContain('Tenant Reidratado')
   })
 })
