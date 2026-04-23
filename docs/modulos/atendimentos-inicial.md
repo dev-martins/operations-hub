@@ -107,7 +107,7 @@ Uso atual:
 - alimentar o seletor de responsável no frontend
 - validar `assigned_to` em `PATCH /api/v1/attendances/{id}/assignment`
 
-Essa modelagem continua intencionalmente simples, mas já está vinculada ao tenant do usuário autenticado. O próximo refinamento natural é conectar papéis e permissões explícitas via ACL.
+Essa modelagem continua intencionalmente simples, mas já está vinculada ao tenant do usuário autenticado e agora também conversa com a ACL inicial do projeto para filtrar ações por papel e por recurso.
 
 ## Fluxo implementado
 
@@ -356,6 +356,8 @@ Comportamento:
 - carrega fila
 - carrega responsável atual, quando existir
 - carrega eventos
+- exige `attendances.view`
+- retorna `404` quando o recurso pertence a outro tenant
 
 ### `PATCH /attendances/{id}/status`
 
@@ -372,6 +374,10 @@ Regras:
 
 - `status` é obrigatório
 - `resolution_notes` é obrigatório quando `status = resolved`
+- exige `attendances.update_status` na rota
+- aplica autorização por recurso para diferenciar atualização comum, resolução e cancelamento
+- operador só pode atualizar quando o atendimento está sem responsável ou atribuído a ele
+- atendimentos encerrados não podem voltar ao fluxo operacional
 
 ### `PATCH /attendances/{id}/assignment`
 
@@ -387,6 +393,8 @@ Regras:
 
 - `assigned_to` é obrigatório
 - o operador precisa existir
+- exige `attendances.assign`
+- atendimentos encerrados não podem ser reatribuídos
 
 ### `GET /attendances/{id}/events`
 
@@ -399,6 +407,11 @@ Uso previsto:
 - timeline dedicada
 - auditoria
 - futura composição de painéis ou reprocessamentos
+
+Comportamento atual:
+
+- exige `attendances.view`
+- respeita o escopo do tenant autenticado
 
 ## Como o frontend usa o módulo
 
@@ -426,12 +439,18 @@ O módulo já grava `tenant_id` e agora resolve o contexto inicial pelo usuário
 
 ### ACL
 
-Ainda não há autorização real nas rotas. Mesmo assim, o fluxo já evidencia ações que mais tarde precisarão de permissão explícita:
+O módulo já possui autorização real em duas camadas:
 
-- visualizar fila
-- mudar status
-- assumir atendimento
-- consultar histórico
+- middleware de permissão nas rotas
+- `AttendancePolicy` para decisões dependentes do recurso e do estado atual
+
+Na prática, isso já cobre:
+
+- visualização do atendimento e do histórico apenas para usuários autorizados
+- bloqueio de alteração de status por operador fora da responsabilidade do atendimento
+- bloqueio de resolução para papéis sem permissão específica
+- bloqueio de reatribuição em atendimentos encerrados
+- negação por tenant antes de qualquer ação sobre o recurso
 
 ### Legado e integrações
 
@@ -454,7 +473,11 @@ O backend já possui testes de feature cobrindo:
 - listagem com fila relacionada e escopo por tenant
 - visualização de detalhe com eventos
 - atualização de status com exigência de `resolution_notes`
+- bloqueio de atualização por operador não responsável
+- bloqueio de resolução por papel sem permissão
 - atribuição de responsável
+- bloqueio de reatribuição em atendimento encerrado
+- retorno `404` ao acessar recursos de outro tenant
 - listagem de filas com contagem no tenant autenticado
 - listagem de operadores para atribuição no tenant autenticado
 
@@ -463,6 +486,6 @@ O backend já possui testes de feature cobrindo:
 Dentro da mesma feature, a ordem mais coerente de evolução continua sendo:
 
 1. consolidar este módulo e sua documentação
-2. conectar ACL aos fluxos de visualização e ação
+2. fechar a etapa atual com revisão final de testes e narrativa pública
 3. ampliar o estado compartilhado do frontend para permissões e contexto operacional
 4. só então preparar a integração da branch em `develop`

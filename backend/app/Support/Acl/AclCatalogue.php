@@ -17,6 +17,8 @@ final class AclCatalogue
                 Permission::AttendancesView,
                 Permission::AttendancesCreate,
                 Permission::AttendancesUpdateStatus,
+                Permission::AttendancesResolve,
+                Permission::AttendancesCancel,
                 Permission::AttendancesAssign,
             ],
             Role::Supervisor => [
@@ -26,6 +28,7 @@ final class AclCatalogue
                 Permission::AttendancesView,
                 Permission::AttendancesCreate,
                 Permission::AttendancesUpdateStatus,
+                Permission::AttendancesResolve,
                 Permission::AttendancesAssign,
             ],
             Role::Operator => [

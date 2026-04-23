@@ -10,6 +10,8 @@ enum Permission: string
     case AttendancesView = 'attendances.view';
     case AttendancesCreate = 'attendances.create';
     case AttendancesUpdateStatus = 'attendances.update_status';
+    case AttendancesResolve = 'attendances.resolve';
+    case AttendancesCancel = 'attendances.cancel';
     case AttendancesAssign = 'attendances.assign';
 
     public function label(): string
@@ -21,6 +23,8 @@ enum Permission: string
             self::AttendancesView => 'Visualizar atendimentos',
             self::AttendancesCreate => 'Abrir atendimentos',
             self::AttendancesUpdateStatus => 'Atualizar status de atendimentos',
+            self::AttendancesResolve => 'Resolver atendimentos',
+            self::AttendancesCancel => 'Cancelar atendimentos',
             self::AttendancesAssign => 'Atribuir atendimentos',
         };
     }
@@ -34,6 +38,8 @@ enum Permission: string
             self::AttendancesView => 'Permite visualizar lista, detalhe e histórico de atendimentos.',
             self::AttendancesCreate => 'Permite registrar novos atendimentos na fila operacional.',
             self::AttendancesUpdateStatus => 'Permite mover o atendimento entre estados do fluxo.',
+            self::AttendancesResolve => 'Permite concluir formalmente o atendimento com registro de resolução.',
+            self::AttendancesCancel => 'Permite cancelar atendimentos quando o fluxo não deve seguir.',
             self::AttendancesAssign => 'Permite atribuir o atendimento a outro operador do tenant.',
         };
     }

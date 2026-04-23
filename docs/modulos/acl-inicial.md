@@ -6,8 +6,8 @@ Formalizar a primeira camada de papéis e permissões da central operacional par
 
 ## Papéis implementados
 
-- `admin`: visão de ACL, leitura de usuários, leitura de filas, leitura de atendimentos, abertura de atendimento, atualização de status e atribuição
-- `supervisor`: visão de ACL, leitura de usuários, leitura de filas, leitura de atendimentos, abertura de atendimento, atualização de status e atribuição
+- `admin`: visão de ACL, leitura de usuários, leitura de filas, leitura de atendimentos, abertura de atendimento, atualização de status, resolução, cancelamento e atribuição
+- `supervisor`: visão de ACL, leitura de usuários, leitura de filas, leitura de atendimentos, abertura de atendimento, atualização de status, resolução e atribuição
 - `operator`: leitura de filas, leitura de atendimentos, abertura de atendimento e atualização de status
 - `viewer`: leitura de filas e leitura de atendimentos
 
@@ -19,6 +19,8 @@ Formalizar a primeira camada de papéis e permissões da central operacional par
 - `attendances.view`
 - `attendances.create`
 - `attendances.update_status`
+- `attendances.resolve`
+- `attendances.cancel`
 - `attendances.assign`
 
 ## Decisão de backend
@@ -46,6 +48,20 @@ Essa escolha evita espalhar matrizes de acesso por controllers e permite:
 - `PATCH /api/v1/attendances/{id}/assignment` exige `attendances.assign`
 
 O isolamento por tenant continua obrigatório. A ACL complementa esse filtro, não substitui o escopo multi-tenant.
+
+## Regras por recurso no atendimento
+
+Além da permissão geral da rota, o projeto agora aplica autorização por recurso com `AttendancePolicy`.
+
+Regras iniciais:
+
+- `operator` pode mover o atendimento no fluxo operacional apenas quando ele estiver sem responsável ou atribuído ao próprio operador
+- `operator` não resolve nem cancela atendimentos
+- `supervisor` pode atualizar, resolver e reatribuir atendimentos do tenant
+- `admin` pode atualizar, resolver, cancelar e reatribuir atendimentos do tenant
+- atendimentos `resolved` ou `cancelled` não aceitam reatribuição nem novas mudanças de status
+
+Essa camada aproxima o projeto de um cenário real de operação, em que papel isolado não basta e o estado do recurso também interfere na autorização.
 
 ## Reflexo no frontend
 
@@ -87,6 +103,9 @@ Os testes de feature passaram a cobrir:
 - bloqueio da visão de ACL para papéis sem `acl.view`
 - bloqueio da listagem de usuários para papéis sem `users.view`
 - bloqueio da atribuição de atendimento para papéis sem `attendances.assign`
+- bloqueio da alteração de status quando o operador não é o responsável
+- bloqueio de resolução por operador
+- bloqueio de reatribuição em atendimentos já encerrados
 
 ## Execução dos testes
 
@@ -108,6 +127,6 @@ docker compose exec backend composer test
 ## Próximos refinamentos naturais
 
 - separar permissões de supervisão e administração com mais granularidade
-- introduzir policies por recurso quando surgirem regras dependentes do estado do atendimento
-- refletir ACL também nas telas dedicadas de filas e atendimentos
+- expandir o uso de policies por recurso para outros módulos além de atendimentos
+- aprofundar ACL também nas telas dedicadas de filas e governança administrativa
 - cobrir o frontend com testes automatizados quando a infraestrutura de teste da SPA entrar no projeto

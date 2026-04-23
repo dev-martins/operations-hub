@@ -17,8 +17,11 @@ class AttendanceAssignmentController extends Controller
 
     public function update(UpdateAttendanceAssignmentRequest $request, int $attendance): AttendanceResource
     {
+        $record = $this->findAttendanceForTenant($attendance, $request->user()->tenant_id);
+        $this->authorize('assign', $record);
+
         $attendance = $this->attendanceService->assign(
-            $this->findAttendanceForTenant($attendance, $request->user()->tenant_id),
+            $record,
             $request->integer('assigned_to'),
             $request->user(),
         );

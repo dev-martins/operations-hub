@@ -2,7 +2,7 @@
 
 ## Fase
 
-Primeiro módulo de domínio implementado com autenticação inicial e contexto de tenant.
+Primeiro módulo de domínio implementado com autenticação, contexto de tenant, ACL operacional e testes de feature já acoplados ao fluxo real.
 
 ## O que já existe
 
@@ -17,7 +17,8 @@ Primeiro módulo de domínio implementado com autenticação inicial e contexto 
 - rotas do módulo protegidas e filtradas pelo tenant do usuário autenticado
 - ACL inicial com papéis, permissões e bloqueio de rotas no backend
 - reflexo de permissões no frontend com navegação e ações condicionadas
-- testes de feature cobrindo os contratos principais da API
+- tela dedicada de atendimentos com paginação, detalhe e ações guiadas por ACL
+- testes de feature cobrindo autenticação, contrato da API, isolamento por tenant e regras críticas de ACL
 - documentação do módulo em `docs/modulos/atendimentos-inicial.md`
 - documentação da ACL inicial em `docs/modulos/acl-inicial.md`
 - README público neutro
@@ -31,15 +32,22 @@ Primeiro módulo de domínio implementado com autenticação inicial e contexto 
 
 ## Leitura da fase atual
 
-O projeto já demonstra um fluxo operacional protegido por autenticação, contexto inicial de tenant e uma primeira camada de ACL aplicada em rotas e ações da interface. O próximo salto de maturidade está em aprofundar governança fina por recurso, fortalecer a camada de estado compartilhado do frontend e ampliar a automação de qualidade.
+O projeto já demonstra um fluxo operacional protegido por autenticação, contexto inicial de tenant, ACL aplicada em rotas e ações da interface e uma visão dedicada de atendimentos orientada ao domínio. O ponto mais importante desta fase é que autorização e qualidade automatizada deixaram de ser promessa arquitetural: hoje já existem permissões aplicadas no backend, rules por recurso no atendimento e testes cobrindo cenários positivos e negativos do contrato público.
+
+Isso cria evidência real de que o projeto já sustenta:
+
+- governança inicial por papel e permissão
+- negação explícita de ações quando o recurso não pertence ao tenant autenticado
+- bloqueio de mudança de status, resolução e reatribuição em cenários indevidos
+- proteção do frontend por ACL refletida a partir do payload autenticado
 
 ## Próximo passo recomendado
 
 O avanço mais coerente agora é:
 
-1. aprofundar a ACL com rules por recurso e distinções mais fortes entre supervisão e administração
-2. formalizar estado compartilhado do frontend para além da sessão autenticada
-3. preparar a integração da feature em `develop` com documentação e fluxo GitFlow registrados
+1. modularizar o frontend de atendimentos em componentes, composables e serviços por domínio
+2. introduzir testes de frontend para permissões, estados bloqueados e renderização condicional
+3. preparar a próxima etapa de filas, usuários e governança administrativa
 
 ## Leitura recomendada para a próxima fase
 
@@ -56,3 +64,25 @@ O módulo atual já permite:
 - atribuir responsável
 
 O próximo passo é fazer esse fluxo operar com governança mais detalhada por recurso, para que a evolução para tenant mais robusto, integrações e CI/CD aconteça sobre uma base funcional real.
+
+## Evidência de testes nesta fase
+
+Os testes automatizados já acompanham o módulo implementado e não estão mais restritos ao esqueleto do framework.
+
+Cenários já cobertos no backend:
+
+- autenticação com retorno do contexto completo do usuário autenticado
+- acesso ao catálogo de ACL apenas para papéis autorizados
+- criação e listagem de atendimentos dentro do tenant correto
+- mudança de status com validação de resolução
+- bloqueio de atualização por operador que não é responsável pelo atendimento
+- bloqueio de resolução por papel sem permissão
+- bloqueio de reatribuição em atendimento encerrado
+- retorno `404` para recursos de outro tenant
+
+Neste projeto, a execução dos testes continua sendo feita somente dentro do Docker e usando o banco de testes isolado do ambiente containerizado:
+
+```bash
+docker compose up -d
+docker compose exec backend composer test
+```

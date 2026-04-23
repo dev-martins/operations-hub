@@ -13,9 +13,11 @@ class AttendanceEventController extends Controller
 {
     public function index(int $attendance, Request $request): AnonymousResourceCollection
     {
+        $record = $this->findAttendanceForTenant($attendance, $request->user()->tenant_id);
+        $this->authorize('view', $record);
+
         return AttendanceEventResource::collection(
-            $this->findAttendanceForTenant($attendance, $request->user()->tenant_id)
-                ->events()
+            $record->events()
                 ->latest('created_at')
                 ->get()
         );

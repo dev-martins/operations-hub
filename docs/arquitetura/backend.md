@@ -6,18 +6,17 @@ O backend em Laravel deve concentrar a regra de negócio da central de atendimen
 
 ## Papel do Laravel no projeto
 
-O framework será usado como base de produtividade e organização, não como lugar para concentrar toda a lógica diretamente em controllers e models.
+O framework já está sendo usado como base de produtividade e organização, sem concentrar toda a regra de negócio diretamente em controllers e models.
 
-As decisões iniciais são:
+Na implementação atual, o backend já adota:
 
 - rotas versionadas em `/api/v1`
 - controllers finos, focados em entrada e saída HTTP
-- validação por `FormRequest` quando os fluxos reais forem criados
-- regras de negócio em services, actions ou casos de uso
-- policies e gates para ACL
-- jobs e events para processamento assíncrono
+- validação por `FormRequest` nos fluxos de login, criação de atendimento, mudança de status e atribuição
+- regras de negócio concentradas em services para criação, transição de status e registro de eventos
+- middleware de permissão e policies para ACL em duas camadas
 - resources para padronização das respostas da API
-- testes de feature para contratos e testes unitários para regras críticas
+- testes de feature cobrindo contrato, isolamento por tenant e regras críticas de autorização
 
 ## Estrutura alvo
 
@@ -64,7 +63,7 @@ Perguntas que a arquitetura precisa responder:
 
 ### ACL
 
-Papéis e permissões devem impactar:
+Papéis e permissões impactam:
 
 - acesso a rotas
 - ações permitidas por recurso
@@ -76,7 +75,21 @@ Na etapa atual, a ACL inicial foi materializada com:
 - catálogo central de papéis e permissões em `app/Support/Acl`
 - payload autenticado já retornando papel e permissões do usuário
 - middleware de permissão aplicado diretamente nas rotas da API
+- `AttendancePolicy` registrada no `AppServiceProvider` para validar acesso por recurso
 - manutenção do escopo por tenant como filtro complementar à autorização
+
+Essa combinação já diferencia dois níveis de proteção:
+
+- permissão de rota para bloquear acesso bruto ao endpoint
+- policy por recurso para decidir o que cada papel pode fazer sobre um atendimento específico
+
+No fluxo atual de atendimentos, isso já produz regras concretas:
+
+- `operator` pode avançar status apenas quando o atendimento está sem responsável ou atribuído ao próprio usuário
+- `operator` não resolve nem cancela atendimentos
+- `supervisor` pode resolver e reatribuir atendimentos do tenant
+- `admin` mantém o maior nível de governança operacional, incluindo cancelamento
+- atendimentos encerrados não aceitam reatribuição nem retorno ao fluxo operacional
 
 ### Legado e integrações
 
@@ -89,16 +102,37 @@ Uma leitura madura deste backend deve deixar claro que:
 - Laravel foi escolhido para acelerar entrega com organização clara
 - a API foi versionada para preservar contratos
 - a regra de negócio não fica acoplada à camada HTTP
-- multi-tenant e ACL foram considerados como requisitos estruturais
+- multi-tenant e ACL foram tratados como requisitos estruturais desde o primeiro módulo
 - Redis e RabbitMQ entram como ferramentas arquiteturais, não como adereços
+
+## Evidência atual
+
+O backend já possui evidências técnicas que saíram do campo de plano:
+
+- autenticação com Laravel Passport retornando contexto do usuário, tenant, papel e permissões
+- rotas protegidas por middleware de permissão para ACL, usuários, filas e atendimentos
+- autorização por recurso no módulo de atendimentos com `AttendancePolicy`
+- isolamento de tenant aplicado na busca dos recursos antes da autorização
+- registro transacional de eventos de domínio ao criar atendimento, mudar status e reatribuir responsável
+- suíte de testes de feature cobrindo contrato da API, autenticação, ACL, isolamento por tenant e cenários negativos de autorização
+
+Entre os cenários já cobertos em teste estão:
+
+- retorno do catálogo de ACL apenas para papéis autorizados
+- criação e listagem de atendimentos com escopo restrito ao tenant autenticado
+- bloqueio de alteração de status para operador fora da responsabilidade do atendimento
+- bloqueio de resolução por papel sem permissão específica
+- bloqueio de reatribuição em atendimentos já encerrados
+- retorno `404` quando um recurso pertence a outro tenant
 
 ## Etapa atual
 
-Hoje o backend está na fundação técnica:
+Hoje o backend já saiu da fundação técnica e possui um primeiro fluxo operacional implementado:
 
-- infraestrutura preparada
-- endpoint de status inicial
-- testes padrão do framework
-- sem domínio real ainda implementado
+- autenticação inicial com contexto de tenant
+- módulo de atendimentos com criação, listagem, detalhe, mudança de status e atribuição
+- ACL aplicada em rota e em recurso
+- eventos de domínio registrados a cada transição relevante
+- testes de feature representativos do contrato público da API
 
-O próximo passo recomendado é transformar o primeiro fluxo de negócio em um módulo real, começando por atendimentos e filas operacionais.
+O próximo passo recomendado é expandir essa base para governança administrativa, filas e cobertura automatizada complementar, preservando o mesmo padrão de isolamento por tenant e autorização explícita.

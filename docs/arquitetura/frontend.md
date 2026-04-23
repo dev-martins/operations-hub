@@ -86,6 +86,7 @@ Na etapa atual, o frontend já usa o payload autenticado para:
 - bloquear acesso a rotas sem permissão
 - esconder ações operacionais que o papel atual não pode executar
 - exibir uma visão explícita da matriz inicial de ACL
+- sustentar uma tela dedicada de atendimentos com filtros, paginação, detalhe e ações dependentes do recurso selecionado
 
 ## Relação com o Adminator
 

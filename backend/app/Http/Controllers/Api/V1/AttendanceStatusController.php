@@ -18,9 +18,14 @@ class AttendanceStatusController extends Controller
 
     public function update(UpdateAttendanceStatusRequest $request, int $attendance): AttendanceResource
     {
+        $record = $this->findAttendanceForTenant($attendance, $request->user()->tenant_id);
+        $status = AttendanceStatus::from($request->string('status')->toString());
+
+        $this->authorize($this->abilityForStatus($status), $record);
+
         $attendance = $this->attendanceService->changeStatus(
-            $this->findAttendanceForTenant($attendance, $request->user()->tenant_id),
-            AttendanceStatus::from($request->string('status')->toString()),
+            $record,
+            $status,
             $request->string('resolution_notes')->toString() ?: null,
             $request->user(),
         );
@@ -35,5 +40,14 @@ class AttendanceStatusController extends Controller
             ->where('tenant_id', $tenantId)
             ->first()
             ?? throw new NotFoundHttpException();
+    }
+
+    private function abilityForStatus(AttendanceStatus $status): string
+    {
+        return match ($status) {
+            AttendanceStatus::RESOLVED => 'resolve',
+            AttendanceStatus::CANCELLED => 'cancel',
+            default => 'updateStatus',
+        };
     }
 }
