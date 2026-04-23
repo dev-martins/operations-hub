@@ -48,6 +48,7 @@ const attendanceDetail = {
   title: 'Webhook parado',
   description: 'Fila sem retorno do legado.',
   queue: { name: 'Suporte N1' },
+  creator: { id: 9, name: 'Alice Admin', email: 'alice.admin@example.com', role: 'admin' },
   status: 'open',
   status_label: 'Aberto',
   priority: 'high',
@@ -120,6 +121,8 @@ describe('AttendancesView', () => {
 
     const wrapper = await mountView()
 
+    expect(wrapper.text()).toContain('Aberto por')
+    expect(wrapper.text()).toContain('Alice Admin')
     expect(wrapper.text()).toContain('Como operador, você só pode avançar atendimentos sem responsável ou atribuídos a você.')
     expect(wrapper.find('[data-testid="status-select"]').exists()).toBe(false)
   })

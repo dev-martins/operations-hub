@@ -478,6 +478,10 @@ onMounted(async () => {
                 <strong class="d-block">{{ selectedAttendance.assignee?.name ?? 'Não atribuído' }}</strong>
               </div>
               <div>
+                <small class="detail-label">Aberto por</small>
+                <strong class="d-block">{{ selectedAttendance.creator?.name ?? 'Não identificado' }}</strong>
+              </div>
+              <div>
                 <small class="detail-label">Origem</small>
                 <strong class="d-block">{{ selectedAttendance.origin_label }}</strong>
               </div>

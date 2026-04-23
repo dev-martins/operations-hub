@@ -15,6 +15,12 @@ class Attendance extends Model
 {
     use HasFactory;
 
+    public const OPERATIONAL_STATUSES = [
+        AttendanceStatus::OPEN,
+        AttendanceStatus::IN_PROGRESS,
+        AttendanceStatus::WAITING_EXTERNAL,
+    ];
+
     protected $fillable = [
         'tenant_id',
         'protocol',
@@ -56,6 +62,11 @@ class Attendance extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function events(): HasMany
     {
         return $this->hasMany(AttendanceEvent::class)->latest('created_at');
@@ -72,5 +83,10 @@ class Attendance extends Model
     public function isAssignableTo(User $user): bool
     {
         return $this->assigned_to === null || $this->assigned_to === $user->id;
+    }
+
+    public static function operationalStatuses(): array
+    {
+        return self::OPERATIONAL_STATUSES;
     }
 }

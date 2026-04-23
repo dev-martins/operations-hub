@@ -20,9 +20,13 @@ class AttendanceController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Attendance::query()
-            ->with(['queue', 'assignee'])
+            ->with(['queue', 'assignee', 'creator'])
             ->where('tenant_id', $request->user()->tenant_id)
             ->latest('opened_at');
+
+        if ($request->boolean('operational_only')) {
+            $query->whereIn('status', Attendance::operationalStatuses());
+        }
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
@@ -52,7 +56,7 @@ class AttendanceController extends Controller
         $this->authorize('view', $record);
 
         return AttendanceResource::make(
-            $record->load(['queue', 'events', 'assignee'])
+            $record->load(['queue', 'events', 'assignee', 'creator'])
         );
     }
 
