@@ -223,6 +223,7 @@ Esta pipeline inicial reforça três pontos importantes do projeto:
 - qualidade deixou de ser uma prática manual e passou a ser um critério de integração
 - o ambiente containerizado não é apenas conveniência local, mas base real de validação
 - a separação entre backend Laravel e frontend Vue continua explícita também na automação
+- dependências sensíveis de runtime, como `vendor/` e `node_modules/`, ficam isoladas em volumes nomeados para reduzir instabilidade entre host e CI
 
 ## Monorepo e separação de entrega
 

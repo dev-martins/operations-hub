@@ -3,22 +3,22 @@
 set -euo pipefail
 
 echo "Subindo dependencias do ambiente de validacao..."
-docker compose up -d mysql mysql_testing redis rabbitmq backend
+docker compose up -d mysql mysql_testing redis rabbitmq
 
 echo "Instalando dependencias do backend no container..."
-docker compose exec -T backend composer install --no-interaction --prefer-dist
+docker compose run --rm --no-deps backend composer install --no-interaction --prefer-dist
 
 echo "Validando formatacao do backend com Pint..."
-docker compose exec -T backend composer lint
+docker compose run --rm --no-deps backend composer lint
 
 echo "Executando testes do backend com banco de testes no Docker..."
-docker compose exec -T backend composer test
+docker compose run --rm --no-deps backend composer test
 
 echo "Executando testes do frontend no Docker..."
-docker compose run --rm --entrypoint sh front -lc "npm ci && npm test"
+docker compose run --rm --no-deps --entrypoint sh front -lc "npm ci && npm test"
 
 echo "Gerando build do frontend no Docker..."
-docker compose run --rm --entrypoint sh front -lc "npm ci && npm run build"
+docker compose run --rm --no-deps --entrypoint sh front -lc "npm ci && npm run build"
 
 echo "Validando build das imagens Docker..."
 docker build -f docker/backend/Dockerfile -t operations-hub/backend:local-pre-push .

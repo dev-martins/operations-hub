@@ -20,23 +20,23 @@ jobs:
       - name: Checkout do repositório
         uses: actions/checkout@v4
 
-      - name: Subir stack base no Docker Compose
-        run: docker compose up -d mysql mysql_testing redis rabbitmq backend
+      - name: Subir dependências da stack no Docker Compose
+        run: docker compose up -d mysql mysql_testing redis rabbitmq
 
       - name: Instalar dependências do backend no Docker
-        run: docker compose exec -T backend composer install --no-interaction --prefer-dist
+        run: docker compose run --rm --no-deps backend composer install --no-interaction --prefer-dist
 
       - name: Validar formatação do backend com Pint
-        run: docker compose exec -T backend composer lint
+        run: docker compose run --rm --no-deps backend composer lint
 
       - name: Executar testes do backend no Docker
-        run: docker compose exec -T backend composer test
+        run: docker compose run --rm --no-deps backend composer test
 
       - name: Executar testes do frontend no Docker
-        run: docker compose run --rm --entrypoint sh front -lc "npm ci && npm test"
+        run: docker compose run --rm --no-deps --entrypoint sh front -lc "npm ci && npm test"
 
       - name: Gerar build do frontend no Docker
-        run: docker compose run --rm --entrypoint sh front -lc "npm ci && npm run build"
+        run: docker compose run --rm --no-deps --entrypoint sh front -lc "npm ci && npm run build"
 
       - name: Exibir logs em caso de falha
         if: failure()
