@@ -2,10 +2,6 @@ name: Entrega Preparada
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - 'release/**'
 
 permissions:
   contents: read
@@ -43,7 +39,7 @@ jobs:
   publish-artifact-registry:
     runs-on: ubuntu-latest
     needs: release-readiness
-    if: ${{ env.DEPLOY_ENABLED == 'true' }}
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
     environment: production
 
     steps:

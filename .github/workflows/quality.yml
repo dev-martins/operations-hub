@@ -2,13 +2,13 @@ name: Qualidade
 
 on:
   pull_request:
+    branches:
+      - develop
+      - main
   push:
     branches:
       - main
       - develop
-      - 'feature/**'
-      - 'release/**'
-      - 'hotfix/**'
 
 jobs:
   quality:
@@ -22,6 +22,9 @@ jobs:
 
       - name: Subir stack base no Docker Compose
         run: docker compose up -d mysql mysql_testing redis rabbitmq backend
+
+      - name: Instalar dependências do backend no Docker
+        run: docker compose exec -T backend composer install --no-interaction --prefer-dist
 
       - name: Validar formatação do backend com Pint
         run: docker compose exec -T backend composer lint
