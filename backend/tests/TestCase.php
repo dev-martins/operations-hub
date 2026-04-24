@@ -10,6 +10,15 @@ use Laravel\Passport\Passport;
 
 abstract class TestCase extends BaseTestCase
 {
+    protected static bool $passportKeysBootstrapped = false;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->bootstrapPassportKeys();
+    }
+
     protected function createTenant(array $attributes = []): Tenant
     {
         return Tenant::query()->create(array_merge([
@@ -59,5 +68,20 @@ abstract class TestCase extends BaseTestCase
             'Test Personal Access Client',
             $provider,
         );
+    }
+
+    protected function bootstrapPassportKeys(): void
+    {
+        if (self::$passportKeysBootstrapped) {
+            Passport::loadKeysFrom(storage_path());
+
+            return;
+        }
+
+        $this->artisan('passport:keys', ['--force' => true])->assertExitCode(0);
+
+        Passport::loadKeysFrom(storage_path());
+
+        self::$passportKeysBootstrapped = true;
     }
 }
