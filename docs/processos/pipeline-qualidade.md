@@ -1,0 +1,164 @@
+# Pipeline de qualidade e entrega preparada
+
+## Objetivo
+
+Estabelecer uma camada de CI que valide, a cada push e pull request, se o projeto continua íntegro do ponto de vista de estilo, testes automatizados, build da interface e build das imagens Docker.
+
+Nesta fase, o objetivo ainda não é executar deploy automático em ambiente público. A entrega foi preparada no GitHub Actions, mas o passo final de deploy permanece desabilitado até existir um destino confiável para publicação da imagem e um conjunto de credenciais realmente segregado.
+
+## Princípios adotados
+
+- manter a regra do projeto de executar validações somente dentro do Docker
+- reaproveitar os mesmos comandos usados localmente
+- validar backend e frontend na mesma pipeline
+- falhar cedo quando estilo, teste ou build quebrarem
+- separar qualidade contínua de promoção para deploy
+- não expor credenciais de infraestrutura em um repositório público sem necessidade real
+
+## Workflow configurado
+
+O workflow está em:
+
+- `.github/workflows/quality.yml`
+- `.github/workflows/delivery-disabled.yml`
+
+Ele roda em:
+
+- `pull_request`
+- `push` para `main`
+- `push` para `develop`
+- `push` para `feature/**`
+- `push` para `release/**`
+- `push` para `hotfix/**`
+
+## Etapas executadas
+
+### 1. Subida da infraestrutura base
+
+O pipeline sobe via Docker Compose:
+
+- `mysql`
+- `mysql_testing`
+- `redis`
+- `rabbitmq`
+- `backend`
+
+Isso permite respeitar o mesmo modelo usado no ambiente local.
+
+### 2. Qualidade do backend
+
+O backend executa:
+
+```bash
+docker compose exec -T backend composer lint
+docker compose exec -T backend composer test
+```
+
+Na prática, esta etapa cobre:
+
+- formatação com Laravel Pint em modo de verificação
+- testes automatizados do Laravel usando o banco de testes containerizado
+
+### 3. Qualidade do frontend
+
+O frontend executa:
+
+```bash
+docker compose run --rm --entrypoint sh front -lc "npm ci && npm test"
+docker compose run --rm --entrypoint sh front -lc "npm ci && npm run build"
+```
+
+Na prática, esta etapa cobre:
+
+- testes da SPA com Vitest
+- build de produção da interface
+
+### 4. Validação de build das imagens Docker
+
+O workflow de qualidade também valida que as imagens principais continuam buildando:
+
+```bash
+docker build -f docker/backend/Dockerfile -t operations-hub/backend:<sha> .
+docker build -f docker/front/Dockerfile -t operations-hub/front:<sha> .
+```
+
+Na prática, isso ajuda a capturar cedo:
+
+- quebra de Dockerfile
+- dependência de sistema ausente na imagem
+- regressão que só aparece no empacotamento do container
+
+## Workflow de entrega preparado
+
+O workflow `.github/workflows/delivery-disabled.yml` representa a trilha de CD já estruturada, mas ainda não autorizada para publicar imagem nem acionar deploy.
+
+Ele roda em:
+
+- `workflow_dispatch`
+- `push` para `main`
+- `push` para `release/**`
+
+Nesta fase, ele:
+
+- registra explicitamente que o deploy está desabilitado
+- valida novamente o build das imagens que seriam promovidas
+- mantém um job `deploy` condicionado por `DEPLOY_ENABLED == true`
+
+## Por que o deploy está desabilitado
+
+O repositório está público e, neste momento, o projeto ainda não possui simultaneamente:
+
+- registry definido para publicação da imagem
+- ambiente alvo estável para receber deploy
+- credenciais dedicadas com princípio de menor privilégio
+- estratégia de rotação, revogação e isolamento por ambiente
+
+Desabilitar o deploy nesta fase não representa ausência de CI/CD. Representa uma decisão deliberada de maturidade operacional:
+
+- o CI já protege integração e regressão
+- o CD já está desenhado e pronto para ativação
+- a promoção para produção não é liberada antes da infraestrutura mínima existir
+- credenciais não são adicionadas ao projeto apenas para "mostrar deploy"
+
+## Comandos de referência para uso local
+
+Backend:
+
+```bash
+docker compose exec backend composer lint
+docker compose exec backend composer test
+```
+
+Frontend:
+
+```bash
+docker compose run --rm --entrypoint sh front -lc "npm test"
+docker compose run --rm --entrypoint sh front -lc "npm run build"
+```
+
+## Leitura arquitetural desta decisão
+
+Esta pipeline inicial reforça três pontos importantes do projeto:
+
+- qualidade deixou de ser uma prática manual e passou a ser um critério de integração
+- o ambiente containerizado não é apenas conveniência local, mas base real de validação
+- a separação entre backend Laravel e frontend Vue continua explícita também na automação
+
+## Limites desta fase
+
+Ainda não fazem parte desta etapa:
+
+- publicação automática de imagem em registry
+- deploy automatizado em ambiente GCP ou equivalente
+- análise estática mais profunda em PHP
+- cobertura mínima obrigatória
+- verificações de segurança de dependências
+- versionamento automático de release
+
+## Próximos refinamentos naturais
+
+- adicionar análise estática de backend quando o projeto já tiver volume suficiente para sustentar regras mais rígidas
+- definir critérios de merge vinculados ao workflow de qualidade
+- ativar publicação de imagem quando existir registry com secrets dedicados
+- conectar o workflow de entrega a um ambiente real, preferencialmente com `environment` protegido no GitHub
+- avaliar cache de dependências e otimização de tempo de execução no CI

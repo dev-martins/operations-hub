@@ -1,0 +1,59 @@
+name: Qualidade
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+      - 'release/**'
+      - 'hotfix/**'
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Subir stack base no Docker Compose
+        run: docker compose up -d mysql mysql_testing redis rabbitmq backend
+
+      - name: Validar formatação do backend com Pint
+        run: docker compose exec -T backend composer lint
+
+      - name: Executar testes do backend no Docker
+        run: docker compose exec -T backend composer test
+
+      - name: Executar testes do frontend no Docker
+        run: docker compose run --rm --entrypoint sh front -lc "npm ci && npm test"
+
+      - name: Gerar build do frontend no Docker
+        run: docker compose run --rm --entrypoint sh front -lc "npm ci && npm run build"
+
+      - name: Exibir logs em caso de falha
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Encerrar stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans
+
+  container-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Validar build da imagem do backend
+        run: docker build -f docker/backend/Dockerfile -t operations-hub/backend:${{ github.sha }} .
+
+      - name: Validar build da imagem do frontend
+        run: docker build -f docker/front/Dockerfile -t operations-hub/front:${{ github.sha }} .

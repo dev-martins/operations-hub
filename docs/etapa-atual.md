@@ -25,6 +25,9 @@ Primeiro módulo de domínio implementado com autenticação, contexto de tenant
 - detalhe do atendimento com identificação de quem abriu o registro para reforçar auditabilidade
 - testes de feature cobrindo autenticação, contrato da API, isolamento por tenant e regras críticas de ACL
 - testes de frontend cobrindo filtros, formulários, permissões, estados bloqueados e renderização condicional do módulo
+- pipeline de qualidade no GitHub Actions com backend e frontend validados no Docker
+- validação de build das imagens Docker no CI
+- workflow de entrega preparado no GitHub Actions com deploy mantido desabilitado por segurança operacional
 - documentação do módulo em `docs/modulos/atendimentos-inicial.md`
 - documentação da ACL inicial em `docs/modulos/acl-inicial.md`
 - ADR da estratégia de evolução de acesso a dados em `docs/adr/002-evolucao-acesso-dados-atendimentos.md`
@@ -34,7 +37,7 @@ Primeiro módulo de domínio implementado com autenticação, contexto de tenant
 ## O que ainda não existe
 
 - arquitetura formal de estado compartilhado no frontend
-- pipeline CI/CD configurado
+- deploy automatizado ativo em ambiente remoto
 - fluxo Git/GitFlow inicializado no repositório
 
 ## Leitura da fase atual
@@ -54,15 +57,15 @@ Isso cria evidência real de que o projeto já sustenta:
 
 ## Próximo passo recomendado
 
-Com filas e governança administrativa já materializadas no backend e no frontend, o avanço mais coerente agora é:
+Com a pipeline de qualidade já materializada e a trilha de entrega preparada, o avanço mais coerente agora é:
 
-1. configurar pipeline CI/CD com testes automatizados e critérios mínimos de qualidade
-2. aprofundar policies e regras de autorização por recurso para módulos administrativos
-3. avaliar a introdução de estado compartilhado mais explícito no frontend quando múltiplas telas administrativas passarem a reutilizar o mesmo contexto
+1. aprofundar policies e regras de autorização por recurso para módulos administrativos
+2. avaliar estado compartilhado mais explícito no frontend para contextos administrativos reutilizados
+3. ativar a publicação de imagem e o deploy quando houver registry, ambiente alvo e credenciais segregadas
 
 ## Leitura recomendada para a próxima fase
 
-A próxima etapa já pode abrir infraestrutura de qualidade, porque a base funcional deixou de ser apenas um módulo isolado e passou a incluir governança operacional concreta.
+A etapa atual já abriu a infraestrutura mínima de qualidade. O próximo ganho de maturidade está em usar essa base para endurecer critérios de arquitetura, integração e governança.
 
 O módulo atual já permite:
 
@@ -96,6 +99,9 @@ Cenários já cobertos no backend:
 - criação e atualização de filas apenas para papel com `queues.manage`
 - atualização de papel de usuário apenas para papel com `acl.manage`
 - bloqueio de alteração do próprio papel na governança administrativa
+- execução da verificação de estilo do backend com Pint dentro do Docker
+- validação automatizada do backend e do frontend no workflow de qualidade
+- validação do build das imagens Docker no CI
 
 Cenários já cobertos no frontend:
 
@@ -113,6 +119,7 @@ Neste projeto, a execução dos testes continua sendo feita somente dentro do Do
 
 ```bash
 docker compose up -d
+docker compose exec backend composer lint
 docker compose exec backend composer test
 docker compose run --rm --entrypoint sh front -lc "npm test"
 docker compose run --rm --entrypoint sh front -lc "npm run build"

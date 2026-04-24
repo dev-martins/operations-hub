@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AttendanceEventResource;
 use App\Models\Attendance;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AttendanceEventController extends Controller
@@ -29,6 +29,6 @@ class AttendanceEventController extends Controller
             ->whereKey($attendanceId)
             ->where('tenant_id', $tenantId)
             ->first()
-            ?? throw new NotFoundHttpException();
+            ?? throw new NotFoundHttpException;
     }
 }

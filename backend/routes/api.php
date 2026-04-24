@@ -1,10 +1,10 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AclController;
 use App\Http\Controllers\Api\V1\AttendanceAssignmentController;
 use App\Http\Controllers\Api\V1\AttendanceController;
 use App\Http\Controllers\Api\V1\AttendanceEventController;
 use App\Http\Controllers\Api\V1\AttendanceStatusController;
-use App\Http\Controllers\Api\V1\AclController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\QueueController;
 use App\Http\Controllers\Api\V1\UserController;
