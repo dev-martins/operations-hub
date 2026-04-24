@@ -27,7 +27,7 @@ Primeiro módulo de domínio implementado com autenticação, contexto de tenant
 - testes de frontend cobrindo filtros, formulários, permissões, estados bloqueados e renderização condicional do módulo
 - pipeline de qualidade no GitHub Actions com backend e frontend validados no Docker
 - validação de build das imagens Docker no CI
-- workflow de entrega preparado no GitHub Actions com deploy mantido desabilitado por segurança operacional
+- workflow de entrega preparado no GitHub Actions com destino previsto para Artifact Registry e deploy mantido desabilitado por segurança operacional
 - documentação do módulo em `docs/modulos/atendimentos-inicial.md`
 - documentação da ACL inicial em `docs/modulos/acl-inicial.md`
 - ADR da estratégia de evolução de acesso a dados em `docs/adr/002-evolucao-acesso-dados-atendimentos.md`
@@ -61,7 +61,7 @@ Com a pipeline de qualidade já materializada e a trilha de entrega preparada, o
 
 1. aprofundar policies e regras de autorização por recurso para módulos administrativos
 2. avaliar estado compartilhado mais explícito no frontend para contextos administrativos reutilizados
-3. ativar a publicação de imagem e o deploy quando houver registry, ambiente alvo e credenciais segregadas
+3. ativar a publicação de imagem no Artifact Registry e o deploy quando houver ambiente alvo e credenciais segregadas
 
 ## Leitura recomendada para a próxima fase
 

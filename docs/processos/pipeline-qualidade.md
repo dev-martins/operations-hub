@@ -4,7 +4,7 @@
 
 Estabelecer uma camada de CI que valide, a cada push e pull request, se o projeto continua íntegro do ponto de vista de estilo, testes automatizados, build da interface e build das imagens Docker.
 
-Nesta fase, o objetivo ainda não é executar deploy automático em ambiente público. A entrega foi preparada no GitHub Actions, mas o passo final de deploy permanece desabilitado até existir um destino confiável para publicação da imagem e um conjunto de credenciais realmente segregado.
+Nesta fase, o objetivo ainda não é executar deploy automático em ambiente público. A entrega foi preparada no GitHub Actions com destino previsto para o Google Artifact Registry, mas o passo final de publicação e deploy permanece desabilitado até existir um destino confiável para publicação da imagem e um conjunto de credenciais realmente segregado.
 
 ## Princípios adotados
 
@@ -90,7 +90,7 @@ Na prática, isso ajuda a capturar cedo:
 
 ## Workflow de entrega preparado
 
-O workflow `.github/workflows/delivery-disabled.yml` representa a trilha de CD já estruturada, mas ainda não autorizada para publicar imagem nem acionar deploy.
+O workflow `.github/workflows/delivery-disabled.yml` representa a trilha de CD já estruturada para o Google Artifact Registry, mas ainda não autorizada para publicar imagem nem acionar deploy.
 
 Ele roda em:
 
@@ -102,13 +102,74 @@ Nesta fase, ele:
 
 - registra explicitamente que o deploy está desabilitado
 - valida novamente o build das imagens que seriam promovidas
-- mantém um job `deploy` condicionado por `DEPLOY_ENABLED == true`
+- exibe o destino previsto das imagens no Artifact Registry
+- mantém um job de publicação condicionado por `DEPLOY_ENABLED == true`
+
+## Destino previsto das imagens
+
+Quando a esteira for ativada, as imagens serão publicadas no formato:
+
+```text
+<regiao>-docker.pkg.dev/<project-id>/<repositorio>/<imagem>:<sha>
+```
+
+Exemplo previsto no workflow:
+
+```text
+us-central1-docker.pkg.dev/seu-projeto-gcp/operations-hub/backend:<sha>
+us-central1-docker.pkg.dev/seu-projeto-gcp/operations-hub/front:<sha>
+```
+
+## Secrets e variáveis esperados para ativação
+
+O workflow já está preparado para autenticação no GCP via Workload Identity Federation, evitando chave JSON estática no repositório.
+
+Secrets esperados:
+
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`
+- `GCP_SERVICE_ACCOUNT_EMAIL`
+
+Variables esperadas no GitHub:
+
+- `GCP_REGION`
+- `GCP_PROJECT_ID`
+- `GCP_ARTIFACT_REGISTRY_REPOSITORY`
+- `BACKEND_IMAGE_NAME`
+- `FRONTEND_IMAGE_NAME`
+
+Esses valores devem ser configurados preferencialmente em:
+
+- `Settings` -> `Secrets and variables` -> `Actions` -> `Variables`
+- ou em `Settings` -> `Environments` -> `production`, quando houver necessidade de separar por ambiente
+
+No workflow, esses valores já são consumidos via `vars.*`.
+
+## Onde configurar no GitHub futuramente
+
+Mapeamento recomendado:
+
+- Repository ou Environment Variables:
+- `GCP_PROJECT_ID`
+- `GCP_REGION`
+- `GCP_ARTIFACT_REGISTRY_REPOSITORY`
+- `BACKEND_IMAGE_NAME`
+- `FRONTEND_IMAGE_NAME`
+
+- Environment Secrets:
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`
+- `GCP_SERVICE_ACCOUNT_EMAIL`
+
+Organização recomendada:
+
+- manter valores não sensíveis em `Variables`
+- manter credenciais somente em `Secrets`
+- usar `Environment` como `production` para proteger a etapa de entrega com regras próprias
 
 ## Por que o deploy está desabilitado
 
 O repositório está público e, neste momento, o projeto ainda não possui simultaneamente:
 
-- registry definido para publicação da imagem
+- registry Artifact Registry provisionado e validado para este projeto
 - ambiente alvo estável para receber deploy
 - credenciais dedicadas com princípio de menor privilégio
 - estratégia de rotação, revogação e isolamento por ambiente
@@ -148,7 +209,7 @@ Esta pipeline inicial reforça três pontos importantes do projeto:
 
 Ainda não fazem parte desta etapa:
 
-- publicação automática de imagem em registry
+- publicação automática de imagem no Artifact Registry
 - deploy automatizado em ambiente GCP ou equivalente
 - análise estática mais profunda em PHP
 - cobertura mínima obrigatória
@@ -159,6 +220,12 @@ Ainda não fazem parte desta etapa:
 
 - adicionar análise estática de backend quando o projeto já tiver volume suficiente para sustentar regras mais rígidas
 - definir critérios de merge vinculados ao workflow de qualidade
-- ativar publicação de imagem quando existir registry com secrets dedicados
+- ativar publicação de imagem quando o Artifact Registry estiver provisionado e os secrets estiverem configurados
 - conectar o workflow de entrega a um ambiente real, preferencialmente com `environment` protegido no GitHub
 - avaliar cache de dependências e otimização de tempo de execução no CI
+
+## Leitura complementar
+
+Para a ativação futura do Artifact Registry no GCP, consultar:
+
+- `docs/processos/ativacao-artifact-registry-gcp.md`
