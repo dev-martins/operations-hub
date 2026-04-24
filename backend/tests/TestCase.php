@@ -11,6 +11,7 @@ use Laravel\Passport\Passport;
 abstract class TestCase extends BaseTestCase
 {
     protected static bool $passportKeysBootstrapped = false;
+
     private const TEST_APP_KEY = 'base64:H3Qvt6/AhsPNH6YK2Z6PVzIOr3GN2x1Y34v9m7vWEto=';
 
     protected function setUp(): void
