@@ -11,12 +11,23 @@ use Laravel\Passport\Passport;
 abstract class TestCase extends BaseTestCase
 {
     protected static bool $passportKeysBootstrapped = false;
+    private const TEST_APP_KEY = 'base64:H3Qvt6/AhsPNH6YK2Z6PVzIOr3GN2x1Y34v9m7vWEto=';
 
     protected function setUp(): void
     {
         parent::setUp();
 
+        $this->ensureApplicationKey();
         $this->bootstrapPassportKeys();
+    }
+
+    protected function ensureApplicationKey(): void
+    {
+        if (filled(config('app.key'))) {
+            return;
+        }
+
+        config()->set('app.key', self::TEST_APP_KEY);
     }
 
     protected function createTenant(array $attributes = []): Tenant
