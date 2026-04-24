@@ -23,6 +23,7 @@ services:
     working_dir: /var/www/html
     volumes:
       - ./backend:/var/www/html
+      - operations-backend-vendor:/var/www/html/vendor
     environment:
       APP_ENV: local
       APP_DEBUG: "true"
@@ -139,6 +140,7 @@ networks:
   operations_hub:
 
 volumes:
+  operations-backend-vendor:
   operations-mysql-data:
   operations-mysql-testing-data:
   operations-front-node-modules:

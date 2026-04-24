@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Tenant;
 use App\Models\OperationQueue;
+use App\Models\Tenant;
 use Illuminate\Database\Seeder;
 
 class OperationQueueSeeder extends Seeder

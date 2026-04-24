@@ -12,9 +12,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AttendanceStatusController extends Controller
 {
-    public function __construct(private readonly AttendanceService $attendanceService)
-    {
-    }
+    public function __construct(private readonly AttendanceService $attendanceService) {}
 
     public function update(UpdateAttendanceStatusRequest $request, int $attendance): AttendanceResource
     {
@@ -39,7 +37,7 @@ class AttendanceStatusController extends Controller
             ->whereKey($attendanceId)
             ->where('tenant_id', $tenantId)
             ->first()
-            ?? throw new NotFoundHttpException();
+            ?? throw new NotFoundHttpException;
     }
 
     private function abilityForStatus(AttendanceStatus $status): string

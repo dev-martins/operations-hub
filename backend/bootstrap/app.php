@@ -1,7 +1,8 @@
 <?php
 
-use Illuminate\Auth\AuthenticationException;
+use App\Http\Middleware\EnsureUserHasPermission;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -17,7 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,
+            'permission' => EnsureUserHasPermission::class,
         ]);
 
         $middleware->redirectGuestsTo(function (Request $request): ?string {

@@ -13,9 +13,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class AttendanceController extends Controller
 {
-    public function __construct(private readonly AttendanceService $attendanceService)
-    {
-    }
+    public function __construct(private readonly AttendanceService $attendanceService) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -66,6 +64,6 @@ class AttendanceController extends Controller
             ->whereKey($attendanceId)
             ->where('tenant_id', $tenantId)
             ->first()
-            ?? throw new NotFoundHttpException();
+            ?? throw new NotFoundHttpException;
     }
 }

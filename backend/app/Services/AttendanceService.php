@@ -63,8 +63,7 @@ class AttendanceService
         AttendanceStatus $status,
         ?string $resolutionNotes = null,
         ?User $actor = null
-    ): Attendance
-    {
+    ): Attendance {
         return DB::transaction(function () use ($attendance, $status, $resolutionNotes, $actor): Attendance {
             $this->ensureStatusTransitionIsMeaningful($attendance, $status);
 
