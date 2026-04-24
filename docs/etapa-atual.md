@@ -28,6 +28,7 @@ Primeiro módulo de domínio implementado com autenticação, contexto de tenant
 - pipeline de qualidade no GitHub Actions com backend e frontend validados no Docker
 - validação de build das imagens Docker no CI
 - workflow de entrega preparado no GitHub Actions com destino previsto para Artifact Registry e deploy mantido desabilitado por segurança operacional
+- script local de pré-push espelhando a esteira de qualidade via Docker
 - documentação do módulo em `docs/modulos/atendimentos-inicial.md`
 - documentação da ACL inicial em `docs/modulos/acl-inicial.md`
 - ADR da estratégia de evolução de acesso a dados em `docs/adr/002-evolucao-acesso-dados-atendimentos.md`
@@ -125,4 +126,10 @@ docker compose exec backend composer lint
 docker compose exec backend composer test
 docker compose run --rm --entrypoint sh front -lc "npm test"
 docker compose run --rm --entrypoint sh front -lc "npm run build"
+```
+
+Também existe um fluxo único para falhar cedo antes do envio ao remoto:
+
+```bash
+./bin/pre-push-quality
 ```

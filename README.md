@@ -97,6 +97,21 @@ docker compose run --rm --entrypoint sh front -lc "npm test"
 docker compose run --rm --entrypoint sh front -lc "npm run build"
 ```
 
+## Validação local antes do push
+
+Para espelhar a esteira de qualidade localmente, usando Docker e banco de testes isolado, o projeto oferece:
+
+```bash
+./bin/pre-push-quality
+```
+
+Para instalar o hook local de `pre-push` e executar essa validação automaticamente antes de cada envio ao remoto:
+
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-push bin/pre-push-quality
+```
+
 ## Qualidade
 
 O projeto já possui uma pipeline inicial de qualidade em GitHub Actions para validar backend e frontend dentro do Docker.

@@ -197,6 +197,25 @@ docker compose run --rm --entrypoint sh front -lc "npm test"
 docker compose run --rm --entrypoint sh front -lc "npm run build"
 ```
 
+Espelhamento completo do CI antes de `push`:
+
+```bash
+./bin/pre-push-quality
+```
+
+Hook local opcional para falhar cedo antes do envio:
+
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-push bin/pre-push-quality
+```
+
+Esse fluxo mantém a regra do projeto:
+
+- execução local sempre via Docker
+- testes do backend usando o banco de testes containerizado
+- validação antes do `push`, e não depois do envio ao remoto
+
 ## Leitura arquitetural desta decisão
 
 Esta pipeline inicial reforça três pontos importantes do projeto:
