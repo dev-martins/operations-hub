@@ -44,6 +44,8 @@ Primeiro módulo de domínio implementado com autenticação, contexto de tenant
 
 O projeto já demonstra um fluxo operacional protegido por autenticação, contexto inicial de tenant, ACL aplicada em rotas e ações da interface e uma visão dedicada de atendimentos orientada ao domínio. Nesta evolução, a autorização deixou de ser apenas proteção do fluxo transacional e passou a governar também catálogos administrativos reais do tenant, como filas operacionais e distribuição de papéis de acesso.
 
+No recorte de entrega, a base continua organizada como monorepo, com frontend e backend separados por diretório, mas com esteiras independentes de validação e preparo de imagem. Isso permite sustentar um repositório único agora sem abrir mão de promoção separada de artefatos no futuro.
+
 Isso cria evidência real de que o projeto já sustenta:
 
 - governança inicial por papel e permissão

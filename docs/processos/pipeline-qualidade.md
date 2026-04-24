@@ -205,6 +205,19 @@ Esta pipeline inicial reforça três pontos importantes do projeto:
 - o ambiente containerizado não é apenas conveniência local, mas base real de validação
 - a separação entre backend Laravel e frontend Vue continua explícita também na automação
 
+## Monorepo e separação de entrega
+
+Nesta fase, o projeto permanece em repositório único, com `backend/` e `front/` versionados juntos.
+
+Essa escolha não impede CI/CD nem exige separação imediata em dois repositórios. A separação relevante para a esteira está no nível de artefato e entrega:
+
+- o backend possui fluxo próprio de lint, teste e imagem Docker
+- o frontend possui fluxo próprio de teste, build e imagem Docker
+- a publicação futura no Artifact Registry já considera imagens distintas para backend e frontend
+- o deploy futuro pode promover cada artefato separadamente, mesmo partindo do mesmo repositório
+
+Com isso, o projeto preserva coerência de monorepo sem perder clareza arquitetural na automação.
+
 ## Limites desta fase
 
 Ainda não fazem parte desta etapa:
