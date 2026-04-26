@@ -1,5 +1,13 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AclController;
+use App\Http\Controllers\Api\V1\AttendanceAssignmentController;
+use App\Http\Controllers\Api\V1\AttendanceController;
+use App\Http\Controllers\Api\V1\AttendanceEventController;
+use App\Http\Controllers\Api\V1\AttendanceStatusController;
+use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\QueueController;
+use App\Http\Controllers\Api\V1\UserController;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Route;
 
@@ -19,5 +27,25 @@ Route::prefix('v1')->group(function (): void {
                 'docker',
             ],
         ]);
+    });
+
+    Route::post('/auth/login', [AuthController::class, 'login']);
+
+    Route::middleware('auth:api')->group(function (): void {
+        Route::get('/auth/me', [AuthController::class, 'me']);
+        Route::post('/auth/logout', [AuthController::class, 'logout']);
+        Route::get('/auth/acl', [AclController::class, 'index'])->middleware('permission:acl.view');
+
+        Route::get('/queues', [QueueController::class, 'index'])->middleware('permission:queues.view');
+        Route::post('/queues', [QueueController::class, 'store'])->middleware('permission:queues.manage');
+        Route::patch('/queues/{queue}', [QueueController::class, 'update'])->middleware('permission:queues.manage');
+        Route::get('/users', [UserController::class, 'index'])->middleware('permission:users.view');
+        Route::patch('/users/{user}/role', [UserController::class, 'updateRole'])->middleware('permission:acl.manage');
+        Route::get('/attendances', [AttendanceController::class, 'index'])->middleware('permission:attendances.view');
+        Route::post('/attendances', [AttendanceController::class, 'store'])->middleware('permission:attendances.create');
+        Route::get('/attendances/{attendance}', [AttendanceController::class, 'show'])->middleware('permission:attendances.view');
+        Route::patch('/attendances/{attendance}/status', [AttendanceStatusController::class, 'update'])->middleware('permission:attendances.update_status');
+        Route::patch('/attendances/{attendance}/assignment', [AttendanceAssignmentController::class, 'update'])->middleware('permission:attendances.assign');
+        Route::get('/attendances/{attendance}/events', [AttendanceEventController::class, 'index'])->middleware('permission:attendances.view');
     });
 });

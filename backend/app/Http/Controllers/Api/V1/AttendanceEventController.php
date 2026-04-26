@@ -1,0 +1,34 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Resources\AttendanceEventResource;
+use App\Models\Attendance;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+
+class AttendanceEventController extends Controller
+{
+    public function index(int $attendance, Request $request): AnonymousResourceCollection
+    {
+        $record = $this->findAttendanceForTenant($attendance, $request->user()->tenant_id);
+        $this->authorize('view', $record);
+
+        return AttendanceEventResource::collection(
+            $record->events()
+                ->latest('created_at')
+                ->get()
+        );
+    }
+
+    private function findAttendanceForTenant(int $attendanceId, int $tenantId): Attendance
+    {
+        return Attendance::query()
+            ->whereKey($attendanceId)
+            ->where('tenant_id', $tenantId)
+            ->first()
+            ?? throw new NotFoundHttpException;
+    }
+}

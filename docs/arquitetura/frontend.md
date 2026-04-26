@@ -57,6 +57,12 @@ O raciocínio arquitetural importante aqui é:
 - dados remotos precisam ter estratégia clara para loading, erro, retry e invalidação
 - permissões e tenant impactam não só a renderização, mas também a navegação disponível
 
+Na evolução atual do projeto, essa estratégia passou a ser explicitada por três categorias de store:
+
+- stores de shell e contexto global: sessão autenticada, tenant ativo, permissões derivadas, status da API e navegação visível
+- stores de governança compartilhada: filas administrativas, visão de ACL, feedback de mutação e sincronização de dados remotos usados em mais de uma tela administrativa
+- stores de fluxo operacional: fila principal, detalhe do atendimento selecionado, formulários de mutação e sincronização do recorte ativo da operação
+
 ## Integração com a API
 
 O consumo da API deve ser centralizado em `services`, evitando chamadas HTTP espalhadas por componentes.
@@ -80,6 +86,14 @@ Isso afeta:
 - filtros por contexto operacional
 - mensagens de acesso negado ou indisponibilidade funcional
 
+Na etapa atual, o frontend já usa o payload autenticado para:
+
+- filtrar a navegação disponível
+- bloquear acesso a rotas sem permissão
+- esconder ações operacionais que o papel atual não pode executar
+- exibir uma visão explícita da matriz inicial de ACL
+- sustentar uma tela dedicada de atendimentos com filtros, paginação, detalhe e ações dependentes do recurso selecionado
+
 ## Relação com o Adminator
 
 O Adminator deve ser usado como base visual e estrutural, mas adaptado ao Vue.
@@ -102,13 +116,47 @@ Uma boa leitura sobre o frontend deste projeto deve mostrar que:
 
 ## Etapa atual
 
-Hoje o frontend já possui uma dashboard inicial baseada em Adminator e um consumo simples do endpoint de status da API. Ainda faltam:
+Hoje o frontend já sustenta um módulo operacional real com:
 
-- roteamento real
-- estrutura formal de estado
-- módulos de domínio
-- autenticação
-- navegação condicionada por permissões
-- documentação de decisões por fluxo implementado
+- autenticação inicial e hidratação da sessão
+- tenant e permissões carregados a partir do payload autenticado
+- navegação condicionada por ACL
+- rota dedicada de atendimentos
+- rota dedicada de filas com governança administrativa
+- rota dedicada de ACL com resumo de papéis e usuários do tenant
+- filtros, paginação e detalhe do atendimento
+- formulários de status e atribuição refletindo regras de permissão
+- testes automatizados para store, roteamento, composables, views e componentes críticos do módulo
 
-O próximo passo recomendado é iniciar o primeiro módulo de domínio com uma estrutura explícita de `views`, `services` e `stores`.
+Na evolução mais recente, o frontend passou a combinar dois movimentos complementares:
+
+- reorganização do módulo de atendimentos para reduzir acoplamento da view principal
+- introdução de telas administrativas de filas e ACL consumindo novos endpoints de governança
+
+No estado atual, fica explícita a separação entre:
+
+- `views`: composição da tela dedicada de atendimentos
+- `components/attendances`: blocos visuais reutilizáveis do fluxo operacional
+- `modules/attendances/composables`: orquestração do estado local da tela, carregamento remoto e ações do domínio
+- `modules/attendances/constants`: opções de filtros, tons visuais e formatação compartilhada do domínio
+- `services`: acesso HTTP centralizado aos endpoints da API
+- `stores/authSession`: sessão autenticada, token, usuário e tenant ativo
+- `stores/appShell`: contexto compartilhado do shell da aplicação, como navegação filtrada por ACL e status da API
+- `stores/governanceContext`: estado administrativo compartilhado entre filas e ACL, com loading, erro, edição e reidratação dos dados remotos
+- `stores/operationalQueueContext`: estado remoto e transitório da fila operacional, incluindo filtros, criação de atendimento, seleção atual e ações sobre o registro selecionado
+
+Essa organização foi escolhida para evitar uma `view` monolítica e tornar mais fácil testar:
+
+- renderização condicional por seleção de atendimento
+- estados bloqueados por ACL
+- filtros e paginação
+- feedback visual após ações de status e atribuição
+
+Também foi escolhida para deixar mais clara a fronteira entre:
+
+- estado verdadeiramente global, que precisa sobreviver à troca de rota
+- estado administrativo compartilhado entre mais de uma tela
+- estado operacional compartilhado por blocos distintos da mesma visão
+- estado local de uma view específica, que ainda pode continuar em composables ou `reactive` local quando não há reaproveitamento suficiente para store
+
+Com isso, o frontend deixa de depender apenas de lógica distribuída em `views` e passa a mostrar de forma mais explícita como tenant, ACL, navegação e governança administrativa são coordenados pela aplicação.

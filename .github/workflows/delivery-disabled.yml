@@ -1,0 +1,81 @@
+name: Entrega Preparada
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  DEPLOY_ENABLED: "false"
+  DEPLOY_DISABLED_REASON: "Deploy desabilitado enquanto o repositorio publico ainda nao possui registry Artifact Registry provisionado, ambiente alvo e credenciais protegidas com menor privilegio."
+
+jobs:
+  release-readiness:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Exibir contexto da esteira de entrega
+        run: |
+          echo "Workflow de entrega preparado."
+          echo "Motivo da desabilitacao: $DEPLOY_DISABLED_REASON"
+          echo "A ativacao depende de Artifact Registry, ambiente alvo e secrets dedicados."
+
+      - name: Exibir destino previsto das imagens
+        run: |
+          echo "Backend: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY }}/${{ vars.BACKEND_IMAGE_NAME }}:${GITHUB_SHA}"
+          echo "Frontend: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY }}/${{ vars.FRONTEND_IMAGE_NAME }}:${GITHUB_SHA}"
+
+      - name: Validar build da imagem do backend
+        run: docker build -f docker/backend/Dockerfile -t operations-hub/backend:${{ github.sha }} .
+
+      - name: Validar build da imagem do frontend
+        run: docker build -f docker/front/Dockerfile -t operations-hub/front:${{ github.sha }} .
+
+  publish-artifact-registry:
+    runs-on: ubuntu-latest
+    needs: release-readiness
+    if: ${{ vars.DEPLOY_ENABLED == 'true' }}
+    environment: production
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Autenticar no Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+      - name: Configurar gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+
+      - name: Autenticar Docker no Artifact Registry
+        run: gcloud auth configure-docker ${{ vars.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Buildar imagem do backend para o Artifact Registry
+        run: |
+          docker build \
+            -f docker/backend/Dockerfile \
+            -t ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY }}/${{ vars.BACKEND_IMAGE_NAME }}:${GITHUB_SHA} \
+            .
+
+      - name: Publicar imagem do backend no Artifact Registry
+        run: docker push ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY }}/${{ vars.BACKEND_IMAGE_NAME }}:${GITHUB_SHA}
+
+      - name: Buildar imagem do frontend para o Artifact Registry
+        run: |
+          docker build \
+            -f docker/front/Dockerfile \
+            -t ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY }}/${{ vars.FRONTEND_IMAGE_NAME }}:${GITHUB_SHA} \
+            .
+
+      - name: Publicar imagem do frontend no Artifact Registry
+        run: docker push ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.GCP_ARTIFACT_REGISTRY_REPOSITORY }}/${{ vars.FRONTEND_IMAGE_NAME }}:${GITHUB_SHA}

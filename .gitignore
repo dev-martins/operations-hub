@@ -1,4 +1,5 @@
 AGENTS.md
+.private/
 .env
 .env.testing
 .idea/
@@ -13,6 +14,8 @@ backend/storage/framework/sessions/*
 backend/storage/framework/views/*
 backend/bootstrap/cache/*
 backend/.phpunit.result.cache
+backend/oauth-private.key
+backend/oauth-public.key
 
 front/node_modules/
 front/dist/

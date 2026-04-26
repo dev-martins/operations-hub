@@ -90,10 +90,36 @@ Essa leitura posiciona o produto como camada de coordenação operacional entre 
 ```bash
 docker compose up -d
 docker compose exec backend php artisan migrate
+docker compose exec backend composer lint
 docker compose exec backend php artisan test
 docker compose exec backend composer test
-docker compose exec front npm install
+docker compose run --rm --entrypoint sh front -lc "npm test"
+docker compose run --rm --entrypoint sh front -lc "npm run build"
 ```
+
+## Validação local antes do push
+
+Para espelhar a esteira de qualidade localmente, usando Docker e banco de testes isolado, o projeto oferece:
+
+```bash
+./bin/pre-push-quality
+```
+
+Para instalar o hook local de `pre-push` e executar essa validação automaticamente antes de cada envio ao remoto:
+
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-push bin/pre-push-quality
+```
+
+## Qualidade
+
+O projeto já possui uma pipeline inicial de qualidade em GitHub Actions para validar backend e frontend dentro do Docker.
+
+Leituras úteis:
+
+- `docs/processos/pipeline-qualidade.md`
+- `.github/workflows/quality.yml`
 
 ## Direção de evolução
 
@@ -108,18 +134,22 @@ O projeto pode ser expandido gradualmente nas seguintes frentes:
 
 ## Próxima etapa recomendada
 
-O próximo avanço mais importante do projeto é sair da fundação técnica e implementar o primeiro slice real do domínio.
+Com o pipeline inicial de qualidade configurado, o próximo avanço mais importante é aprofundar governança técnica e critérios de integração.
 
-Esse slice deve incluir:
+Esse avanço pode seguir por frentes complementares:
 
-- cadastro e abertura de atendimentos
-- classificação por tipo, origem, prioridade e tenant
-- filas operacionais com regras básicas de atribuição
-- histórico de eventos do atendimento
-- testes de feature e unitários cobrindo o contrato inicial e as regras de prioridade
-
-Com isso, o sistema deixa de ser apenas uma base preparada e passa a demonstrar uma solução concreta para operações que dependem de triagem, execução e integração com legado.
+- ampliar regras de autorização por recurso nos módulos administrativos
+- introduzir análise estática adicional no backend quando o volume do projeto justificar
+- preparar o fluxo de release a partir de `develop` para `release/*` e `main`
 
 ## Documentação
 
 Os artefatos de arquitetura, domínio, diagramas e decisões técnicas devem ser registrados em `docs/` conforme o sistema evolui.
+
+Leituras já disponíveis:
+
+- `docs/arquitetura/backend.md`
+- `docs/arquitetura/frontend.md`
+- `docs/arquitetura/dominio-operacional.md`
+- `docs/modulos/atendimentos-inicial.md`
+- `docs/processos/pipeline-qualidade.md`

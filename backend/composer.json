@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.3",
         "laravel/framework": "^13.0",
+        "laravel/passport": "^13.7",
         "laravel/tinker": "^3.0"
     },
     "require-dev": {
@@ -41,9 +42,16 @@
             "Composer\\Config::disableProcessTimeout",
             "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185\" \"php artisan serve --host=0.0.0.0 --port=8000\" \"php artisan queue:listen --tries=1 --timeout=0\" \"php artisan pail --timeout=0\" --names=server,queue,logs --kill-others"
         ],
+        "lint": [
+            "vendor/bin/pint --test"
+        ],
         "test": [
-            "@php artisan config:clear --ansi",
-            "@php artisan test"
+            "APP_ENV=testing DB_CONNECTION=mysql_testing CACHE_STORE=array SESSION_DRIVER=array QUEUE_CONNECTION=sync MAIL_MAILER=array php artisan config:clear --ansi",
+            "APP_ENV=testing DB_CONNECTION=mysql_testing CACHE_STORE=array SESSION_DRIVER=array QUEUE_CONNECTION=sync MAIL_MAILER=array php artisan test --env=testing"
+        ],
+        "quality": [
+            "@lint",
+            "@test"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
