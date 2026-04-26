@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import OperationalQueueView from './OperationalQueueView.vue'
+import { resetOperationalQueueState } from '../stores/operationalQueueContext'
 
 const attendanceServiceMocks = vi.hoisted(() => ({
   assignAttendance: vi.fn(),
@@ -82,6 +83,7 @@ const mountView = async () => {
 describe('OperationalQueueView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetOperationalQueueState()
 
     authSessionMock.authState.user = {
       id: 4,

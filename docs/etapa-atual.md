@@ -74,7 +74,9 @@ O recorte atual dessa nova fase já começou com:
 
 - store de shell da aplicação para navegação visível, status da API e contexto derivado da sessão
 - store de governança compartilhada para filas administrativas e visão de ACL
+- store de fluxo operacional para lista principal, detalhe selecionado e mutações da fila
 - redução de lógica remota diretamente dentro das views administrativas
+- redução de lógica remota diretamente dentro da visão operacional principal
 - testes dedicados para essas novas stores do frontend
 
 ## Próximo passo recomendado
