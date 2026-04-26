@@ -30,7 +30,7 @@ class AttendanceTest extends TestCase
 
     public function test_it_allows_status_update_when_attendance_is_unassigned_or_belongs_to_the_same_user(): void
     {
-        $user = new User();
+        $user = new User;
         $user->id = 42;
 
         $unassignedAttendance = new Attendance([

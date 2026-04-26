@@ -16,7 +16,7 @@ class AttendancePolicyTest extends TestCase
     {
         parent::setUp();
 
-        $this->policy = new AttendancePolicy();
+        $this->policy = new AttendancePolicy;
     }
 
     public function test_operator_can_update_status_when_attendance_is_unassigned_in_the_same_tenant(): void
