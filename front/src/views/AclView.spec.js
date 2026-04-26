@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AclView from './AclView.vue'
+import { resetGovernanceState } from '../stores/governanceContext'
 
 const authServiceMocks = vi.hoisted(() => ({
   fetchAclOverview: vi.fn(),
@@ -86,6 +87,7 @@ const mountView = async () => {
 describe('AclView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetGovernanceState()
 
     authSessionMock.hasPermission.mockImplementation((permission) => {
       return ['acl.view', 'acl.manage'].includes(permission)

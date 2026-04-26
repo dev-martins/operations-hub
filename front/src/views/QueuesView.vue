@@ -1,97 +1,24 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted } from 'vue'
 import { hasPermission } from '../stores/authSession'
-import { createQueue, fetchQueuesOverview, updateQueue } from '../services/governanceService'
-
-const loading = ref(true)
-const saving = ref(false)
-const queues = ref([])
-const feedback = ref('')
-const errors = ref({})
-const editingQueueId = ref(null)
-
-const form = reactive({
-  name: '',
-  code: '',
-  description: '',
-  active: true,
-})
+import {
+  activeQueuesCount,
+  cancelQueueEditing,
+  governanceState,
+  loadQueuesOverview,
+  queueSubmitLabel,
+  resetGovernanceState,
+  startQueueEditing,
+  submitQueue,
+  totalWaitingCount,
+  inactiveQueuesCount,
+} from '../stores/governanceContext'
 
 const canManageQueues = computed(() => hasPermission('queues.manage'))
-const activeQueuesCount = computed(() => queues.value.filter((queue) => queue.active).length)
-const inactiveQueuesCount = computed(() => queues.value.filter((queue) => !queue.active).length)
-const totalWaitingCount = computed(() => queues.value.reduce((sum, queue) => sum + (queue.waiting_count ?? 0), 0))
-const submitLabel = computed(() => editingQueueId.value ? 'Salvar fila' : 'Criar fila')
-
-const resetFeedback = () => {
-  feedback.value = ''
-  errors.value = {}
-}
-
-const resetForm = () => {
-  form.name = ''
-  form.code = ''
-  form.description = ''
-  form.active = true
-  editingQueueId.value = null
-}
-
-const loadQueues = async () => {
-  loading.value = true
-
-  try {
-    queues.value = await fetchQueuesOverview()
-  } finally {
-    loading.value = false
-  }
-}
-
-const startEditing = (queue) => {
-  resetFeedback()
-  editingQueueId.value = queue.id
-  form.name = queue.name
-  form.code = queue.code
-  form.description = queue.description ?? ''
-  form.active = Boolean(queue.active)
-}
-
-const cancelEditing = () => {
-  resetFeedback()
-  resetForm()
-}
-
-const submitQueue = async () => {
-  saving.value = true
-  resetFeedback()
-
-  try {
-    const payload = {
-      name: form.name,
-      code: form.code,
-      description: form.description,
-      active: form.active,
-    }
-
-    if (editingQueueId.value) {
-      await updateQueue(editingQueueId.value, payload)
-      feedback.value = 'Fila atualizada com sucesso.'
-    } else {
-      await createQueue(payload)
-      feedback.value = 'Fila criada com sucesso.'
-    }
-
-    resetForm()
-    await loadQueues()
-  } catch (error) {
-    errors.value = error.response?.data?.errors ?? {}
-    feedback.value = error.response?.data?.message ?? 'Não foi possível salvar a fila.'
-  } finally {
-    saving.value = false
-  }
-}
 
 onMounted(async () => {
-  await loadQueues()
+  resetGovernanceState()
+  await loadQueuesOverview()
 })
 </script>
 
@@ -132,16 +59,16 @@ onMounted(async () => {
       <div class="bd bgc-white p-20 h-100">
         <div class="d-flex jc-sb ai-c mB-20">
           <h5 class="mB-0">Catálogo do tenant</h5>
-          <button type="button" class="btn btn-outline-primary btn-sm" @click="loadQueues">
+          <button type="button" class="btn btn-outline-primary btn-sm" @click="loadQueuesOverview">
             Atualizar
           </button>
         </div>
 
-        <div v-if="loading" class="empty-state compact">
+        <div v-if="governanceState.queuesLoading" class="empty-state compact">
           Carregando filas...
         </div>
 
-        <div v-else-if="queues.length === 0" class="empty-state compact">
+        <div v-else-if="governanceState.queues.length === 0" class="empty-state compact">
           Nenhuma fila operacional cadastrada para o tenant atual.
         </div>
 
@@ -157,7 +84,7 @@ onMounted(async () => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="queue in queues" :key="queue.id">
+              <tr v-for="queue in governanceState.queues" :key="queue.id">
                 <td>
                   <strong class="d-block">{{ queue.name }}</strong>
                   <small class="c-grey-600">{{ queue.description || 'Sem descrição operacional.' }}</small>
@@ -174,7 +101,7 @@ onMounted(async () => {
                     type="button"
                     class="btn btn-outline-secondary btn-sm"
                     data-testid="queue-edit-button"
-                    @click="startEditing(queue)"
+                    @click="startQueueEditing(queue)"
                   >
                     Editar
                   </button>
@@ -190,7 +117,7 @@ onMounted(async () => {
       <div class="bd bgc-white p-20 h-100">
         <div class="d-flex jc-sb ai-c mB-20">
           <h5 class="mB-0">Governança da fila</h5>
-          <span class="section-kicker">{{ editingQueueId ? 'edição' : 'cadastro' }}</span>
+          <span class="section-kicker">{{ governanceState.editingQueueId ? 'edição' : 'cadastro' }}</span>
         </div>
 
         <div v-if="!canManageQueues" class="empty-state compact permission-state" data-testid="queues-management-blocked">
@@ -200,45 +127,45 @@ onMounted(async () => {
         <form v-else @submit.prevent="submitQueue">
           <div class="mB-15">
             <label class="form-label">Nome</label>
-            <input v-model="form.name" type="text" class="form-control" data-testid="queue-name-input">
-            <small v-if="errors.name" class="field-error">{{ errors.name[0] }}</small>
+            <input v-model="governanceState.queueForm.name" type="text" class="form-control" data-testid="queue-name-input">
+            <small v-if="governanceState.queueErrors.name" class="field-error">{{ governanceState.queueErrors.name[0] }}</small>
           </div>
 
           <div class="mB-15">
             <label class="form-label">Código</label>
-            <input v-model="form.code" type="text" class="form-control" data-testid="queue-code-input">
-            <small v-if="errors.code" class="field-error">{{ errors.code[0] }}</small>
+            <input v-model="governanceState.queueForm.code" type="text" class="form-control" data-testid="queue-code-input">
+            <small v-if="governanceState.queueErrors.code" class="field-error">{{ governanceState.queueErrors.code[0] }}</small>
           </div>
 
           <div class="mB-15">
             <label class="form-label">Descrição</label>
-            <textarea v-model="form.description" rows="4" class="form-control" data-testid="queue-description-input"></textarea>
+            <textarea v-model="governanceState.queueForm.description" rows="4" class="form-control" data-testid="queue-description-input"></textarea>
           </div>
 
           <div class="form-check mB-20">
-            <input id="queue-active" v-model="form.active" class="form-check-input" type="checkbox">
+            <input id="queue-active" v-model="governanceState.queueForm.active" class="form-check-input" type="checkbox">
             <label class="form-check-label" for="queue-active">
               Fila ativa para novas entradas operacionais
             </label>
           </div>
 
           <div class="d-flex gap-10">
-            <button type="submit" class="btn btn-primary btn-sm" :disabled="saving" data-testid="queue-submit">
-              {{ saving ? 'Salvando...' : submitLabel }}
+            <button type="submit" class="btn btn-primary btn-sm" :disabled="governanceState.queuesSaving" data-testid="queue-submit">
+              {{ governanceState.queuesSaving ? 'Salvando...' : queueSubmitLabel }}
             </button>
             <button
-              v-if="editingQueueId"
+              v-if="governanceState.editingQueueId"
               type="button"
               class="btn btn-outline-secondary btn-sm"
               data-testid="queue-cancel-edit"
-              @click="cancelEditing"
+              @click="cancelQueueEditing"
             >
               Cancelar edição
             </button>
           </div>
 
-          <div v-if="feedback" class="action-feedback mT-20">
-            {{ feedback }}
+          <div v-if="governanceState.queueFeedback" class="action-feedback mT-20">
+            {{ governanceState.queueFeedback }}
           </div>
         </form>
       </div>

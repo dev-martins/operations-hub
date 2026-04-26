@@ -57,6 +57,12 @@ O raciocínio arquitetural importante aqui é:
 - dados remotos precisam ter estratégia clara para loading, erro, retry e invalidação
 - permissões e tenant impactam não só a renderização, mas também a navegação disponível
 
+Na evolução atual do projeto, essa estratégia passou a ser explicitada por três categorias de store:
+
+- stores de shell e contexto global: sessão autenticada, tenant ativo, permissões derivadas, status da API e navegação visível
+- stores de governança compartilhada: filas administrativas, visão de ACL, feedback de mutação e sincronização de dados remotos usados em mais de uma tela administrativa
+- stores de fluxo operacional: fila principal, detalhe do atendimento selecionado, formulários de mutação e sincronização do recorte ativo da operação
+
 ## Integração com a API
 
 O consumo da API deve ser centralizado em `services`, evitando chamadas HTTP espalhadas por componentes.
@@ -134,6 +140,10 @@ No estado atual, fica explícita a separação entre:
 - `modules/attendances/composables`: orquestração do estado local da tela, carregamento remoto e ações do domínio
 - `modules/attendances/constants`: opções de filtros, tons visuais e formatação compartilhada do domínio
 - `services`: acesso HTTP centralizado aos endpoints da API
+- `stores/authSession`: sessão autenticada, token, usuário e tenant ativo
+- `stores/appShell`: contexto compartilhado do shell da aplicação, como navegação filtrada por ACL e status da API
+- `stores/governanceContext`: estado administrativo compartilhado entre filas e ACL, com loading, erro, edição e reidratação dos dados remotos
+- `stores/operationalQueueContext`: estado remoto e transitório da fila operacional, incluindo filtros, criação de atendimento, seleção atual e ações sobre o registro selecionado
 
 Essa organização foi escolhida para evitar uma `view` monolítica e tornar mais fácil testar:
 
@@ -142,4 +152,11 @@ Essa organização foi escolhida para evitar uma `view` monolítica e tornar mai
 - filtros e paginação
 - feedback visual após ações de status e atribuição
 
-O próximo passo recomendado, a partir dessa base, é decidir quando o contexto administrativo já justifica estado compartilhado mais explícito e preparar a aplicação para pipeline CI/CD com validação automatizada da SPA.
+Também foi escolhida para deixar mais clara a fronteira entre:
+
+- estado verdadeiramente global, que precisa sobreviver à troca de rota
+- estado administrativo compartilhado entre mais de uma tela
+- estado operacional compartilhado por blocos distintos da mesma visão
+- estado local de uma view específica, que ainda pode continuar em composables ou `reactive` local quando não há reaproveitamento suficiente para store
+
+Com isso, o frontend deixa de depender apenas de lógica distribuída em `views` e passa a mostrar de forma mais explícita como tenant, ACL, navegação e governança administrativa são coordenados pela aplicação.

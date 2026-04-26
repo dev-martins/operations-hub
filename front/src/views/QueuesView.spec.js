@@ -2,6 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import QueuesView from './QueuesView.vue'
+import { resetGovernanceState } from '../stores/governanceContext'
 
 const governanceServiceMocks = vi.hoisted(() => ({
   createQueue: vi.fn(),
@@ -37,6 +38,7 @@ const mountView = async () => {
 describe('QueuesView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetGovernanceState()
 
     authSessionMock.hasPermission.mockImplementation((permission) => {
       return ['queues.view', 'queues.manage'].includes(permission)
