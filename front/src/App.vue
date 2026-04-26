@@ -4,53 +4,26 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import Sidebar from './adminator/scripts/components/Sidebar'
 import Theme from './adminator/scripts/utils/theme'
 import logoUrl from './adminator/static/images/logo.svg'
-import { authState, clearAuthSession, hasPermission, initializeAuthSession, isAuthenticated, logout } from './stores/authSession'
-import { fetchApiStatus } from './services/attendanceService'
+import { clearAuthSession, initializeAuthSession, isAuthenticated, logout } from './stores/authSession'
+import {
+  appShellState,
+  currentRoleLabel,
+  currentTenantName,
+  currentUserName,
+  loadApiStatus,
+  visibleNavigationItems,
+} from './stores/appShell'
 
-const apiStatus = ref('carregando')
 const currentTheme = ref('light')
 const route = useRoute()
 const router = useRouter()
 let sidebar = null
-
-const navigationItems = [
-  {
-    label: 'Fila operacional',
-    to: '/operacional/fila',
-    iconClass: 'c-blue-500 ti-agenda',
-    permission: 'attendances.view',
-  },
-  {
-    label: 'Atendimentos',
-    to: '/atendimentos',
-    iconClass: 'c-orange-500 ti-layout-list-thumb',
-    permission: 'attendances.view',
-  },
-  {
-    label: 'Filas',
-    to: '/filas',
-    iconClass: 'c-green-500 ti-package',
-    permission: 'queues.view',
-  },
-  {
-    label: 'ACL',
-    to: '/acl',
-    iconClass: 'c-purple-500 ti-shield',
-    permission: 'acl.view',
-  },
-]
 
 const syncTheme = () => {
   currentTheme.value = Theme.current()
 }
 
 const isAuthLayout = computed(() => route.meta.layout === 'auth')
-const currentUserName = computed(() => authState.user?.name ?? 'Operador')
-const currentTenantName = computed(() => authState.tenant?.name ?? 'Tenant nao identificado')
-const currentRoleLabel = computed(() => authState.user?.role_context?.label ?? 'Sem papel')
-const visibleNavigationItems = computed(() => {
-  return navigationItems.filter((item) => !item.permission || hasPermission(item.permission))
-})
 
 const toggleTheme = () => {
   Theme.toggle()
@@ -60,15 +33,6 @@ const toggleTheme = () => {
 const handleLogout = async () => {
   await logout()
   await router.push({ name: 'login' })
-}
-
-const loadApiStatus = async () => {
-  try {
-    const data = await fetchApiStatus()
-    apiStatus.value = data.status
-  } catch (error) {
-    apiStatus.value = 'indisponível'
-  }
 }
 
 const handleUnauthorized = async () => {
@@ -190,7 +154,7 @@ onUnmounted(() => {
             <li>
               <span class="status-chip">
                 <i class="ti-pulse"></i>
-                API {{ apiStatus }}
+                API {{ appShellState.apiStatus }}
               </span>
             </li>
             <li class="theme-toggle d-flex ai-c">

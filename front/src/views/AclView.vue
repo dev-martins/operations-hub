@@ -1,45 +1,17 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted } from 'vue'
 import { authState, hasPermission } from '../stores/authSession'
-import { fetchAclOverview } from '../services/authService'
-import { updateUserRole } from '../services/governanceService'
-
-const loading = ref(true)
-const aclData = ref(null)
-const actionErrors = ref({})
-const actionFeedback = ref('')
-const updatingUserId = ref(null)
+import {
+  governanceState,
+  loadAclOverview,
+  resetGovernanceState,
+  submitRoleUpdate,
+} from '../stores/governanceContext'
 
 const canManageAcl = () => hasPermission('acl.manage')
 
-const loadAclOverview = async () => {
-  loading.value = true
-
-  try {
-    aclData.value = await fetchAclOverview()
-  } finally {
-    loading.value = false
-  }
-}
-
-const submitRoleUpdate = async (userId, role) => {
-  actionErrors.value = {}
-  actionFeedback.value = ''
-  updatingUserId.value = userId
-
-  try {
-    await updateUserRole(userId, { role })
-    actionFeedback.value = 'Papel atualizado com sucesso.'
-    await loadAclOverview()
-  } catch (error) {
-    actionErrors.value = error.response?.data?.errors ?? {}
-    actionFeedback.value = error.response?.data?.message ?? 'Não foi possível atualizar o papel.'
-  } finally {
-    updatingUserId.value = null
-  }
-}
-
 onMounted(async () => {
+  resetGovernanceState()
   await loadAclOverview()
 })
 </script>
@@ -65,28 +37,28 @@ onMounted(async () => {
           <span class="section-kicker">{{ authState.user?.role_context?.key }}</span>
         </div>
 
-        <div v-if="loading" class="empty-state compact">
+        <div v-if="governanceState.aclLoading" class="empty-state compact">
           Carregando matriz de ACL...
         </div>
 
-        <div v-else-if="aclData" class="detail-stack">
+        <div v-else-if="governanceState.aclData" class="detail-stack">
           <div class="detail-card">
             <small class="detail-label">Usuário</small>
-            <strong class="d-block">{{ aclData.current_user.name }}</strong>
-            <small class="c-grey-600">{{ aclData.current_user.tenant?.name }}</small>
+            <strong class="d-block">{{ governanceState.aclData.current_user.name }}</strong>
+            <small class="c-grey-600">{{ governanceState.aclData.current_user.tenant?.name }}</small>
           </div>
 
           <div class="detail-card">
             <small class="detail-label">Papel</small>
-            <strong class="d-block">{{ aclData.current_user.role.label }}</strong>
-            <p class="mB-0 c-grey-700">{{ aclData.current_user.role.description }}</p>
+            <strong class="d-block">{{ governanceState.aclData.current_user.role.label }}</strong>
+            <p class="mB-0 c-grey-700">{{ governanceState.aclData.current_user.role.description }}</p>
           </div>
 
           <div class="detail-card">
             <small class="detail-label">Permissões ativas</small>
             <div class="permission-list mT-15">
               <span
-                v-for="permission in aclData.current_user.permissions"
+                v-for="permission in governanceState.aclData.current_user.permissions"
                 :key="permission.key"
                 class="ticket-tag is-info permission-chip"
               >
@@ -107,13 +79,13 @@ onMounted(async () => {
           </button>
         </div>
 
-        <div v-if="loading" class="empty-state compact">
+        <div v-if="governanceState.aclLoading" class="empty-state compact">
           Carregando papéis e permissões...
         </div>
 
-        <div v-else-if="aclData" class="row">
+        <div v-else-if="governanceState.aclData" class="row">
           <div
-            v-for="role in aclData.roles"
+            v-for="role in governanceState.aclData.roles"
             :key="role.key"
             class="col-xl-6 mB-20"
           >
@@ -152,24 +124,24 @@ onMounted(async () => {
               Usuários, papéis e distribuição operacional para o tenant autenticado.
             </p>
           </div>
-          <span class="section-kicker">{{ aclData?.tenant_users?.length ?? 0 }} usuários</span>
+          <span class="section-kicker">{{ governanceState.aclData?.tenant_users?.length ?? 0 }} usuários</span>
         </div>
 
-        <div v-if="actionFeedback" class="action-feedback mB-20">
-          {{ actionFeedback }}
+        <div v-if="governanceState.aclActionFeedback" class="action-feedback mB-20">
+          {{ governanceState.aclActionFeedback }}
         </div>
 
-        <div v-if="loading" class="empty-state compact">
+        <div v-if="governanceState.aclLoading" class="empty-state compact">
           Carregando governança do tenant...
         </div>
 
-        <div v-else-if="aclData" class="row">
+        <div v-else-if="governanceState.aclData" class="row">
           <div class="col-lg-4 mB-20">
             <div class="detail-card h-100">
               <h6 class="mB-15">Resumo por papel</h6>
               <div class="detail-stack">
                 <div
-                  v-for="role in aclData.role_summary"
+                  v-for="role in governanceState.aclData.role_summary"
                   :key="role.key"
                   class="d-flex jc-sb ai-c"
                 >
@@ -184,7 +156,7 @@ onMounted(async () => {
           </div>
 
           <div class="col-lg-8">
-            <div v-if="aclData.tenant_users.length === 0" class="empty-state compact">
+            <div v-if="governanceState.aclData.tenant_users.length === 0" class="empty-state compact">
               Nenhum usuário carregado para o tenant atual.
             </div>
 
@@ -199,7 +171,7 @@ onMounted(async () => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="user in aclData.tenant_users" :key="user.id">
+                  <tr v-for="user in governanceState.aclData.tenant_users" :key="user.id">
                     <td>
                       <strong class="d-block">{{ user.name }}</strong>
                       <small class="c-grey-600">{{ user.email }}</small>
@@ -215,19 +187,19 @@ onMounted(async () => {
                         <select
                           class="form-control"
                           data-testid="acl-role-select"
-                          :disabled="updatingUserId === user.id"
+                          :disabled="governanceState.updatingUserId === user.id"
                           :value="user.role"
                           @change="submitRoleUpdate(user.id, $event.target.value)"
                         >
                           <option
-                            v-for="role in aclData.manageable_roles"
+                            v-for="role in governanceState.aclData.manageable_roles"
                             :key="role.key"
                             :value="role.key"
                           >
                             {{ role.label }}
                           </option>
                         </select>
-                        <small v-if="actionErrors.role" class="field-error">{{ actionErrors.role[0] }}</small>
+                        <small v-if="governanceState.aclActionErrors.role" class="field-error">{{ governanceState.aclActionErrors.role[0] }}</small>
                       </template>
                       <small v-else class="c-grey-600">
                         Somente administração operacional pode alterar papéis.

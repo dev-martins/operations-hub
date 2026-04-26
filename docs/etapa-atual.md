@@ -38,7 +38,6 @@ Consolidação de qualidade, testes e governança técnica sobre o primeiro mód
 
 ## O que ainda não existe
 
-- arquitetura formal de estado compartilhado no frontend
 - deploy automatizado ativo em ambiente remoto
 - fluxo Git/GitFlow inicializado no repositório
 
@@ -58,6 +57,25 @@ Isso cria evidência real de que o projeto já sustenta:
 - recorte operacional coerente, sem misturar itens encerrados à fila ativa
 - manutenção do catálogo de filas sem sair do contexto multi-tenant
 - atualização controlada de papel de usuários com restrição explícita para evitar autoalteração indevida
+- formalização inicial de estado compartilhado no frontend para shell da aplicação e governança administrativa
+
+## Próxima fase em andamento
+
+Após o fechamento da consolidação de testes, o projeto iniciou a etapa de formalização da arquitetura de estado compartilhado do frontend.
+
+Nesta evolução, o objetivo deixa de ser apenas "ter telas funcionando" e passa a ser demonstrar de forma mais explícita:
+
+- onde vive o contexto global da aplicação
+- quais dados administrativos precisam sobreviver à troca de rota
+- como o frontend separa sessão, navegação, governança e estado local de tela
+- como a interface conversa com a API sem espalhar sincronização remota por várias views
+
+O recorte atual dessa nova fase já começou com:
+
+- store de shell da aplicação para navegação visível, status da API e contexto derivado da sessão
+- store de governança compartilhada para filas administrativas e visão de ACL
+- redução de lógica remota diretamente dentro das views administrativas
+- testes dedicados para essas novas stores do frontend
 
 ## Próximo passo recomendado
 
