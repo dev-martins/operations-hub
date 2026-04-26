@@ -2,7 +2,7 @@
 
 ## Fase
 
-Primeiro módulo de domínio implementado com autenticação, contexto de tenant, ACL operacional e testes de feature já acoplados ao fluxo real.
+Consolidação de qualidade, testes e governança técnica sobre o primeiro módulo operacional já autenticado, multi-tenant e protegido por ACL.
 
 ## O que já existe
 
@@ -24,6 +24,7 @@ Primeiro módulo de domínio implementado com autenticação, contexto de tenant
 - fila operacional exibindo apenas atendimentos ainda em fluxo
 - detalhe do atendimento com identificação de quem abriu o registro para reforçar auditabilidade
 - testes de feature cobrindo autenticação, contrato da API, isolamento por tenant e regras críticas de ACL
+- testes unitários iniciais cobrindo regras isoláveis de domínio e policy no backend
 - testes de frontend cobrindo filtros, formulários, permissões, estados bloqueados e renderização condicional do módulo
 - pipeline de qualidade no GitHub Actions com backend e frontend validados no Docker
 - validação de build das imagens Docker no CI
@@ -60,11 +61,15 @@ Isso cria evidência real de que o projeto já sustenta:
 
 ## Próximo passo recomendado
 
-Com a pipeline de qualidade já materializada e a trilha de entrega preparada, o avanço mais coerente agora é:
+Com a pipeline de qualidade já materializada e a trilha de entrega preparada, o avanço mais coerente agora é consolidar a estratégia de crescimento da suíte e endurecer os critérios de cobertura. Nesta etapa, o projeto deve:
 
-1. aprofundar policies e regras de autorização por recurso para módulos administrativos
-2. avaliar estado compartilhado mais explícito no frontend para contextos administrativos reutilizados
-3. ativar a publicação de imagem no Artifact Registry e o deploy quando houver ambiente alvo e credenciais segregadas
+1. explicitar o critério de cobertura para backend, frontend e testes manuais
+2. mapear lacunas dos fluxos críticos do domínio e da governança administrativa
+3. começar a abrir espaço para testes mais leves e isolados quando surgirem unidades com regra relevante
+4. medir o custo de execução da suíte antes de decidir por paralelismo ou fragmentação do pré-push
+5. registrar essa decisão de qualidade em `docs/processos/estrategia-testes.md`
+
+Esse fechamento já foi iniciado com a criação dos primeiros testes unitários do backend e com a medição explícita da suíte atual em Docker. O restante da fase deve ser lido mais como endurecimento de critério do que como ausência de cobertura automatizada relevante.
 
 ## Leitura recomendada para a próxima fase
 
@@ -82,7 +87,7 @@ O módulo atual já permite:
 - administrar filas do tenant
 - redistribuir papéis de acesso no tenant com governança explícita
 
-O próximo passo é fazer esse fluxo operar com governança mais detalhada por recurso, para que a evolução para tenant mais robusto, integrações e CI/CD aconteça sobre uma base funcional real.
+O próximo passo é fazer esse fluxo operar com governança de qualidade mais explícita, para que a evolução para cache, mensageria, integrações e CI/CD aconteça sobre uma base funcional real e testável.
 
 ## Evidência de testes nesta fase
 
@@ -102,6 +107,9 @@ Cenários já cobertos no backend:
 - criação e atualização de filas apenas para papel com `queues.manage`
 - atualização de papel de usuário apenas para papel com `acl.manage`
 - bloqueio de alteração do próprio papel na governança administrativa
+- identificação unitária de status terminais e status operacionais do atendimento
+- validação unitária da regra de atualização por operador responsável ou supervisão
+- validação unitária de negação por tenant e por atendimento terminal no policy
 - execução da verificação de estilo do backend com Pint dentro do Docker
 - validação automatizada do backend e do frontend no workflow de qualidade
 - validação do build das imagens Docker no CI
@@ -122,6 +130,7 @@ Neste projeto, a execução dos testes continua sendo feita somente dentro do Do
 
 ```bash
 docker compose up -d
+docker compose up -d mysql_testing
 docker compose exec backend composer lint
 docker compose exec backend composer test
 docker compose run --rm --entrypoint sh front -lc "npm test"
@@ -133,3 +142,15 @@ Também existe um fluxo único para falhar cedo antes do envio ao remoto:
 ```bash
 ./bin/pre-push-quality
 ```
+
+## Fechamento objetivo da etapa
+
+Com a fotografia atual, a fase de consolidação de testes fica substancialmente atendida porque agora o projeto já combina:
+
+- cobertura de feature para contrato, ACL e tenant
+- cobertura de frontend para sessão, navegação e bloqueios visuais
+- primeiros testes unitários reais para regras isoláveis do backend
+- medição concreta do custo da suíte antes de qualquer discussão sobre paralelismo
+- documentação explícita das lacunas que permanecem para a próxima evolução
+
+Na medição local final desta etapa, o backend executou `38 testes` com `122 assertions` em `7.18s`, enquanto o frontend executou `45 testes` em `5.49s`, sempre no Docker.
