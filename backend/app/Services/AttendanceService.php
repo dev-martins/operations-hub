@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\AttendanceStatus;
+use App\Jobs\PropagateAttendanceToLegacy;
 use App\Models\Attendance;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -28,30 +29,48 @@ class AttendanceService
                 'opened_at' => now(),
             ]);
 
-            $attendance->events()->create([
-                'tenant_id' => $attendance->tenant_id,
-                'type' => 'created',
-                'description' => 'Atendimento aberto na fila operacional.',
-                'metadata' => [
+            $this->registerEvent(
+                $attendance,
+                'created',
+                'Atendimento aberto na fila operacional.',
+                [
                     'status' => $attendance->status->value,
                     'priority' => $attendance->priority->value,
                     'queue_id' => $attendance->queue_id,
                 ],
-                'created_by' => $actor->id,
-                'created_at' => now(),
-            ]);
+                $actor,
+            );
 
             if ($attendance->assigned_to !== null) {
-                $attendance->events()->create([
-                    'tenant_id' => $attendance->tenant_id,
-                    'type' => 'assigned',
-                    'description' => 'Atendimento atribuído na abertura.',
-                    'metadata' => [
+                $this->registerEvent(
+                    $attendance,
+                    'assigned',
+                    'Atendimento atribuído na abertura.',
+                    [
                         'assigned_to' => $attendance->assigned_to,
                     ],
-                    'created_by' => $actor->id,
-                    'created_at' => now(),
-                ]);
+                    $actor,
+                );
+            }
+
+            if ($this->attendanceIntegrationEnabled()) {
+                $this->registerEvent(
+                    $attendance,
+                    'legacy_sync_requested',
+                    'Sincronização assíncrona com legado enfileirada.',
+                    [
+                        'integration_trigger' => 'created',
+                        'queue' => config('operations.attendance_integrations.queue'),
+                        'connection' => config('operations.attendance_integrations.connection'),
+                    ],
+                    $actor,
+                );
+
+                PropagateAttendanceToLegacy::dispatch(
+                    $attendance->id,
+                    $attendance->tenant_id,
+                    'created',
+                )->afterCommit();
             }
 
             return $attendance->load(['queue', 'events', 'assignee', 'creator']);
@@ -82,17 +101,16 @@ class AttendanceService
 
             $attendance->update($payload);
 
-            $attendance->events()->create([
-                'tenant_id' => $attendance->tenant_id,
-                'type' => 'status_changed',
-                'description' => 'Status do atendimento atualizado.',
-                'metadata' => [
+            $this->registerEvent(
+                $attendance,
+                'status_changed',
+                'Status do atendimento atualizado.',
+                [
                     'status' => $status->value,
                     'resolution_notes' => $resolutionNotes,
                 ],
-                'created_by' => $actor?->id,
-                'created_at' => now(),
-            ]);
+                $actor,
+            );
 
             return $attendance->fresh(['queue', 'events', 'assignee', 'creator']);
         });
@@ -105,16 +123,15 @@ class AttendanceService
                 'assigned_to' => $assignedTo,
             ]);
 
-            $attendance->events()->create([
-                'tenant_id' => $attendance->tenant_id,
-                'type' => 'assigned',
-                'description' => 'Responsável atribuído ao atendimento.',
-                'metadata' => [
+            $this->registerEvent(
+                $attendance,
+                'assigned',
+                'Responsável atribuído ao atendimento.',
+                [
                     'assigned_to' => $assignedTo,
                 ],
-                'created_by' => $actor?->id,
-                'created_at' => now(),
-            ]);
+                $actor,
+            );
 
             return $attendance->fresh(['queue', 'events', 'assignee', 'creator']);
         });
@@ -132,5 +149,27 @@ class AttendanceService
                 'status' => 'O atendimento já está no status informado.',
             ]);
         }
+    }
+
+    private function attendanceIntegrationEnabled(): bool
+    {
+        return (bool) config('operations.attendance_integrations.enabled');
+    }
+
+    private function registerEvent(
+        Attendance $attendance,
+        string $type,
+        string $description,
+        array $metadata = [],
+        ?User $actor = null,
+    ): void {
+        $attendance->events()->create([
+            'tenant_id' => $attendance->tenant_id,
+            'type' => $type,
+            'description' => $description,
+            'metadata' => $metadata,
+            'created_by' => $actor?->id,
+            'created_at' => now(),
+        ]);
     }
 }
