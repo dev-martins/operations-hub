@@ -78,6 +78,8 @@ O recorte atual dessa nova fase já começou com:
 - redução de lógica remota diretamente dentro das views administrativas
 - redução de lógica remota diretamente dentro da visão operacional principal
 - testes dedicados para essas novas stores do frontend
+- início do processamento assíncrono de atendimentos com RabbitMQ para integrações legadas desacopladas
+- worker dedicado no Docker para consumo da fila operacional assíncrona
 
 ## Próximo passo recomendado
 

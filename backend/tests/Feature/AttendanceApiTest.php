@@ -6,10 +6,12 @@ use App\Enums\AttendanceOrigin;
 use App\Enums\AttendancePriority;
 use App\Enums\AttendanceStatus;
 use App\Enums\AttendanceType;
+use App\Jobs\PropagateAttendanceToLegacy;
 use App\Models\Attendance;
 use App\Models\OperationQueue;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class AttendanceApiTest extends TestCase
@@ -18,6 +20,8 @@ class AttendanceApiTest extends TestCase
 
     public function test_it_creates_an_attendance_and_registers_the_first_event(): void
     {
+        config()->set('operations.attendance_integrations.enabled', false);
+
         $user = $this->actingAsTenantUser();
 
         $queue = OperationQueue::query()->create([
@@ -49,6 +53,47 @@ class AttendanceApiTest extends TestCase
         $this->assertDatabaseCount('attendance_events', 1);
         $this->assertDatabaseHas('attendance_events', [
             'type' => 'created',
+            'created_by' => $user->id,
+        ]);
+    }
+
+    public function test_it_dispatches_legacy_synchronization_when_attendance_is_created(): void
+    {
+        config()->set('operations.attendance_integrations.enabled', true);
+        config()->set('operations.attendance_integrations.connection', 'rabbitmq');
+        config()->set('operations.attendance_integrations.queue', 'attendance-integrations');
+
+        Queue::fake();
+
+        $user = $this->actingAsTenantUser();
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'name' => 'Integrações',
+            'code' => 'INT',
+            'active' => true,
+        ]);
+
+        $response = $this->postJson('/api/v1/attendances', [
+            'title' => 'Payload pendente no legado',
+            'description' => 'A integração secundária deve seguir de forma assíncrona.',
+            'type' => AttendanceType::INTEGRATION->value,
+            'origin' => AttendanceOrigin::ERP->value,
+            'priority' => AttendancePriority::HIGH->value,
+            'queue_id' => $queue->id,
+        ]);
+
+        $response->assertCreated();
+
+        Queue::assertPushed(PropagateAttendanceToLegacy::class, function (PropagateAttendanceToLegacy $job) use ($user): bool {
+            return $job->tenantId === $user->tenant_id
+                && $job->trigger === 'created'
+                && $job->connection === 'rabbitmq'
+                && $job->queue === 'attendance-integrations';
+        });
+
+        $this->assertDatabaseHas('attendance_events', [
+            'type' => 'legacy_sync_requested',
             'created_by' => $user->id,
         ]);
     }

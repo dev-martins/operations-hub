@@ -114,6 +114,15 @@ No fluxo atual de atendimentos, isso já produz regras concretas:
 
 Integrações com sistemas legados devem preferir adapters e serviços dedicados para evitar espalhar particularidades externas por controllers e models.
 
+Na evolução atual, o primeiro caso real de mensageria foi introduzido na abertura do atendimento:
+
+- o request principal continua criando o atendimento e registrando o evento síncrono de abertura
+- a necessidade de propagação para legado passa a ser registrada como `legacy_sync_requested`
+- a publicação do job ocorre apenas após o commit da transação
+- um worker dedicado consome a fila RabbitMQ e registra `legacy_sync_processed`
+
+Essa escolha permite mostrar um recorte arquitetural mais maduro sem transformar o fluxo principal em integração síncrona frágil.
+
 ## Leitura arquitetural esperada
 
 Uma leitura madura deste backend deve deixar claro que:
@@ -133,6 +142,7 @@ O backend já possui evidências técnicas que saíram do campo de plano:
 - autorização por recurso no módulo de atendimentos com `AttendancePolicy`
 - isolamento de tenant aplicado na busca dos recursos antes da autorização
 - registro transacional de eventos de domínio ao criar atendimento, mudar status e reatribuir responsável
+- despacho assíncrono pós-commit para propagação de atendimentos em RabbitMQ
 - suíte de testes de feature cobrindo contrato da API, autenticação, ACL, isolamento por tenant e cenários negativos de autorização
 
 Entre os cenários já cobertos em teste estão:

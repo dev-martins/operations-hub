@@ -37,8 +37,14 @@ services:
       DB_PASSWORD: operations
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      QUEUE_CONNECTION: rabbitmq
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
+      RABBITMQ_USER: operations
+      RABBITMQ_PASSWORD: operations
+      ATTENDANCE_INTEGRATION_ENABLED: "true"
+      ATTENDANCE_INTEGRATION_QUEUE_CONNECTION: rabbitmq
+      ATTENDANCE_INTEGRATION_QUEUE: attendance-integrations
       DB_TEST_HOST: mysql_testing
       DB_TEST_PORT: 3306
       DB_TEST_DATABASE: operations_hub_test
@@ -48,6 +54,46 @@ services:
       mysql:
         condition: service_healthy
       mysql_testing:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    networks:
+      - operations_hub
+
+  backend_worker:
+    build:
+      context: .
+      dockerfile: docker/backend/Dockerfile
+    working_dir: /var/www/html
+    command: sh -lc "composer install && php artisan rabbitmq:consume --queue=${ATTENDANCE_INTEGRATION_QUEUE:-attendance-integrations} --sleep=1 --tries=3 -v"
+    volumes:
+      - ./backend:/var/www/html
+      - operations-backend-vendor:/var/www/html/vendor
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8088
+      FRONTEND_URL: http://localhost:5178
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: operations_hub
+      DB_USERNAME: operations
+      DB_PASSWORD: operations
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_CONNECTION: rabbitmq
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: operations
+      RABBITMQ_PASSWORD: operations
+      ATTENDANCE_INTEGRATION_ENABLED: "true"
+      ATTENDANCE_INTEGRATION_QUEUE_CONNECTION: rabbitmq
+      ATTENDANCE_INTEGRATION_QUEUE: attendance-integrations
+    depends_on:
+      mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
