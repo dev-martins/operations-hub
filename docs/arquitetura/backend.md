@@ -16,6 +16,7 @@ Na implementação atual, o backend já adota:
 - regras de negócio concentradas em services para criação, transição de status e registro de eventos
 - middleware de permissão e policies para ACL em duas camadas
 - resources para padronização das respostas da API
+- cache de leitura por tenant para visões operacionais com invalidação explícita
 - testes de feature cobrindo contrato, isolamento por tenant e regras críticas de autorização
 
 ## Estrutura alvo
@@ -142,6 +143,8 @@ O backend já possui evidências técnicas que saíram do campo de plano:
 - autorização por recurso no módulo de atendimentos com `AttendancePolicy`
 - isolamento de tenant aplicado na busca dos recursos antes da autorização
 - registro transacional de eventos de domínio ao criar atendimento, mudar status e reatribuir responsável
+- cache de leitura da visão de filas por tenant, com invalidação em criação de fila, abertura de atendimento e mudança de status
+- cache de leitura da primeira visão operacional de atendimentos por tenant, restrita ao recorte `operational_only`, com invalidação simples em criação, reatribuição, mudança de status e atualização de fila
 - despacho assíncrono pós-commit para propagação de atendimentos em RabbitMQ
 - suíte de testes de feature cobrindo contrato da API, autenticação, ACL, isolamento por tenant e cenários negativos de autorização
 
@@ -154,6 +157,8 @@ Entre os cenários já cobertos em teste estão:
 - bloqueio de reatribuição em atendimentos já encerrados
 - retorno `404` quando um recurso pertence a outro tenant
 - exclusão de atendimentos encerrados da fila operacional quando o recorte pede apenas itens em fluxo
+- reaproveitamento de leitura cacheada em `/api/v1/queues` até haver invalidação por mudança relevante do domínio
+- reaproveitamento de leitura cacheada em `/api/v1/attendances?operational_only=1` enquanto não houver mutação relevante no backlog operacional
 
 ## Etapa atual
 

@@ -6,14 +6,21 @@ use App\Enums\AttendanceStatus;
 use App\Jobs\PropagateAttendanceToLegacy;
 use App\Models\Attendance;
 use App\Models\User;
+use App\Support\Cache\OperationalAttendanceListCache;
+use App\Support\Cache\QueueOverviewCache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AttendanceService
 {
+    public function __construct(
+        private readonly QueueOverviewCache $queueOverviewCache,
+        private readonly OperationalAttendanceListCache $operationalAttendanceListCache,
+    ) {}
+
     public function create(array $data, User $actor): Attendance
     {
-        return DB::transaction(function () use ($data, $actor): Attendance {
+        $attendance = DB::transaction(function () use ($data, $actor): Attendance {
             $attendance = Attendance::create([
                 'tenant_id' => $actor->tenant_id,
                 'protocol' => $this->generateProtocol(),
@@ -75,6 +82,11 @@ class AttendanceService
 
             return $attendance->load(['queue', 'events', 'assignee', 'creator']);
         });
+
+        $this->queueOverviewCache->forgetForTenant($actor->tenant_id);
+        $this->operationalAttendanceListCache->invalidateForTenant($actor->tenant_id);
+
+        return $attendance;
     }
 
     public function changeStatus(
@@ -83,7 +95,7 @@ class AttendanceService
         ?string $resolutionNotes = null,
         ?User $actor = null
     ): Attendance {
-        return DB::transaction(function () use ($attendance, $status, $resolutionNotes, $actor): Attendance {
+        $attendance = DB::transaction(function () use ($attendance, $status, $resolutionNotes, $actor): Attendance {
             $this->ensureStatusTransitionIsMeaningful($attendance, $status);
 
             $payload = [
@@ -114,11 +126,16 @@ class AttendanceService
 
             return $attendance->fresh(['queue', 'events', 'assignee', 'creator']);
         });
+
+        $this->queueOverviewCache->forgetForTenant($attendance->tenant_id);
+        $this->operationalAttendanceListCache->invalidateForTenant($attendance->tenant_id);
+
+        return $attendance;
     }
 
     public function assign(Attendance $attendance, int $assignedTo, ?User $actor = null): Attendance
     {
-        return DB::transaction(function () use ($attendance, $assignedTo, $actor): Attendance {
+        $attendance = DB::transaction(function () use ($attendance, $assignedTo, $actor): Attendance {
             $attendance->update([
                 'assigned_to' => $assignedTo,
             ]);
@@ -135,6 +152,10 @@ class AttendanceService
 
             return $attendance->fresh(['queue', 'events', 'assignee', 'creator']);
         });
+
+        $this->operationalAttendanceListCache->invalidateForTenant($attendance->tenant_id);
+
+        return $attendance;
     }
 
     private function generateProtocol(): string

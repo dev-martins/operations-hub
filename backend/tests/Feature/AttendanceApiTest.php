@@ -11,12 +11,20 @@ use App\Models\Attendance;
 use App\Models\OperationQueue;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class AttendanceApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Cache::flush();
+    }
 
     public function test_it_creates_an_attendance_and_registers_the_first_event(): void
     {
@@ -702,5 +710,221 @@ class AttendanceApiTest extends TestCase
         $response->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.protocol', 'AT-500008');
+    }
+
+    public function test_it_reuses_cached_operational_attendance_list_until_the_cache_is_invalidated(): void
+    {
+        $user = $this->actingAsTenantUser();
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'name' => 'Operacao',
+            'code' => 'OPE',
+            'active' => true,
+        ]);
+
+        Attendance::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'protocol' => 'AT-500010',
+            'title' => 'Primeiro atendimento operacional',
+            'description' => 'Deve compor a leitura inicial cacheada.',
+            'type' => AttendanceType::INCIDENT,
+            'origin' => AttendanceOrigin::MANUAL,
+            'priority' => AttendancePriority::MEDIUM,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'opened_at' => now(),
+        ]);
+
+        $this->getJson('/api/v1/attendances?operational_only=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+
+        Attendance::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'protocol' => 'AT-500011',
+            'title' => 'Segundo atendimento operacional',
+            'description' => 'Nao deve aparecer antes da invalidação.',
+            'type' => AttendanceType::REQUEST,
+            'origin' => AttendanceOrigin::PORTAL,
+            'priority' => AttendancePriority::LOW,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'opened_at' => now(),
+        ]);
+
+        $this->getJson('/api/v1/attendances?operational_only=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+    }
+
+    public function test_it_invalidates_cached_operational_attendance_list_when_creating_an_attendance(): void
+    {
+        config()->set('operations.attendance_integrations.enabled', false);
+
+        $user = $this->actingAsTenantUser();
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'name' => 'Operacao',
+            'code' => 'OPE',
+            'active' => true,
+        ]);
+
+        $this->getJson('/api/v1/attendances?operational_only=1')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        $this->postJson('/api/v1/attendances', [
+            'title' => 'Carga recém-chegada',
+            'description' => 'Deve aparecer após invalidar o cache da fila operacional.',
+            'type' => AttendanceType::INCIDENT->value,
+            'origin' => AttendanceOrigin::MANUAL->value,
+            'priority' => AttendancePriority::HIGH->value,
+            'queue_id' => $queue->id,
+        ])->assertCreated();
+
+        $this->getJson('/api/v1/attendances?operational_only=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.title', 'Carga recém-chegada');
+    }
+
+    public function test_it_invalidates_cached_operational_attendance_list_when_status_changes(): void
+    {
+        $user = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'supervisor',
+            ]),
+        );
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'name' => 'Operacao',
+            'code' => 'OPE',
+            'active' => true,
+        ]);
+
+        $attendance = Attendance::query()->create([
+            'tenant_id' => $user->tenant_id,
+            'protocol' => 'AT-500012',
+            'title' => 'Atendimento para resolução',
+            'description' => 'Deve sair da fila operacional após a mudança de status.',
+            'type' => AttendanceType::INCIDENT,
+            'origin' => AttendanceOrigin::MANUAL,
+            'priority' => AttendancePriority::MEDIUM,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'assigned_to' => $user->id,
+            'created_by' => $user->id,
+            'opened_at' => now(),
+        ]);
+
+        $this->getJson('/api/v1/attendances?operational_only=1')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+
+        $this->patchJson("/api/v1/attendances/{$attendance->id}/status", [
+            'status' => AttendanceStatus::RESOLVED->value,
+            'resolution_notes' => 'Tratativa concluída.',
+        ])->assertOk();
+
+        $this->getJson('/api/v1/attendances?operational_only=1')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
+    public function test_it_invalidates_cached_operational_attendance_list_when_assignment_changes(): void
+    {
+        $supervisor = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'supervisor',
+            ]),
+        );
+
+        $assignee = User::query()->create([
+            'tenant_id' => $supervisor->tenant_id,
+            'name' => 'Operador Dois',
+            'email' => 'operador2@example.com',
+            'password' => bcrypt('password'),
+            'role' => 'operator',
+            'is_active' => true,
+        ]);
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $supervisor->tenant_id,
+            'name' => 'Operacao',
+            'code' => 'OPE',
+            'active' => true,
+        ]);
+
+        $attendance = Attendance::query()->create([
+            'tenant_id' => $supervisor->tenant_id,
+            'protocol' => 'AT-500013',
+            'title' => 'Atendimento sem responsável',
+            'description' => 'Deve refletir a nova atribuição após invalidar o cache.',
+            'type' => AttendanceType::REQUEST,
+            'origin' => AttendanceOrigin::PORTAL,
+            'priority' => AttendancePriority::LOW,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'created_by' => $supervisor->id,
+            'opened_at' => now(),
+        ]);
+
+        $this->getJson('/api/v1/attendances?operational_only=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.assignee.id', null);
+
+        $this->patchJson("/api/v1/attendances/{$attendance->id}/assignment", [
+            'assigned_to' => $assignee->id,
+        ])->assertOk();
+
+        $this->getJson('/api/v1/attendances?operational_only=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.assignee.id', $assignee->id)
+            ->assertJsonPath('data.0.assignee.name', 'Operador Dois');
+    }
+
+    public function test_it_invalidates_cached_operational_attendance_list_when_queue_metadata_changes(): void
+    {
+        $admin = $this->actingAsTenantUser(
+            $this->createUserForTenant(attributes: [
+                'role' => 'admin',
+            ]),
+        );
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $admin->tenant_id,
+            'name' => 'Operacao',
+            'code' => 'OPE',
+            'active' => true,
+        ]);
+
+        Attendance::query()->create([
+            'tenant_id' => $admin->tenant_id,
+            'protocol' => 'AT-500014',
+            'title' => 'Atendimento vinculado à fila',
+            'description' => 'Deve refletir o novo nome da fila após a invalidação.',
+            'type' => AttendanceType::INCIDENT,
+            'origin' => AttendanceOrigin::MANUAL,
+            'priority' => AttendancePriority::MEDIUM,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'created_by' => $admin->id,
+            'opened_at' => now(),
+        ]);
+
+        $this->getJson('/api/v1/attendances?operational_only=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.queue.name', 'Operacao');
+
+        $this->patchJson("/api/v1/queues/{$queue->id}", [
+            'name' => 'Operacao N1',
+        ])->assertOk();
+
+        $this->getJson('/api/v1/attendances?operational_only=1')
+            ->assertOk()
+            ->assertJsonPath('data.0.queue.name', 'Operacao N1');
     }
 }
