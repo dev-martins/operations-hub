@@ -210,11 +210,17 @@ git config core.hooksPath .githooks
 chmod +x .githooks/pre-push bin/pre-push-quality
 ```
 
+Comportamento operacional do hook local:
+
+- roda a validação completa quando o `push` envia commits ou atualiza refs remotas
+- ignora a validação quando o envio é apenas deleção de branch remota, como em `git push --delete origin feature/minha-branch`
+
 Esse fluxo mantém a regra do projeto:
 
 - execução local sempre via Docker
 - testes do backend usando o banco de testes containerizado
 - validação antes do `push`, e não depois do envio ao remoto
+- eliminação de custo desnecessário quando não há artefato novo sendo promovido ao remoto
 
 ## Leitura arquitetural desta decisão
 
