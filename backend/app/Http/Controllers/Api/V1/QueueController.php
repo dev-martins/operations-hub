@@ -8,23 +8,36 @@ use App\Http\Requests\UpdateQueueRequest;
 use App\Http\Resources\QueueResource;
 use App\Models\Attendance;
 use App\Models\OperationQueue;
+use App\Support\Cache\OperationalAttendanceListCache;
+use App\Support\Cache\QueueOverviewCache;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Symfony\Component\HttpFoundation\Response;
 
 class QueueController extends Controller
 {
-    public function index(Request $request): AnonymousResourceCollection
-    {
-        $queues = OperationQueue::query()
-            ->where('tenant_id', $request->user()->tenant_id)
-            ->withCount([
-                'attendances as attendances_count' => fn ($query) => $query->whereIn('status', Attendance::operationalStatuses()),
-            ])
-            ->orderBy('name')
-            ->get();
+    public function __construct(
+        private readonly QueueOverviewCache $queueOverviewCache,
+        private readonly OperationalAttendanceListCache $operationalAttendanceListCache,
+    ) {}
 
-        return QueueResource::collection($queues);
+    public function index(Request $request): JsonResponse
+    {
+        $queues = $this->queueOverviewCache->rememberForTenant($request->user()->tenant_id, function () use ($request): array {
+            $queues = OperationQueue::query()
+                ->where('tenant_id', $request->user()->tenant_id)
+                ->withCount([
+                    'attendances as attendances_count' => fn ($query) => $query->whereIn('status', Attendance::operationalStatuses()),
+                ])
+                ->orderBy('name')
+                ->get();
+
+            return QueueResource::collection($queues)->response()->getData(true)['data'];
+        });
+
+        return response()->json([
+            'data' => $queues,
+        ]);
     }
 
     public function store(StoreQueueRequest $request): QueueResource
@@ -36,6 +49,9 @@ class QueueController extends Controller
             'description' => $request->input('description'),
             'active' => $request->boolean('active', true),
         ]);
+
+        $this->queueOverviewCache->forgetForTenant($request->user()->tenant_id);
+        $this->operationalAttendanceListCache->invalidateForTenant($request->user()->tenant_id);
 
         return new QueueResource($queue);
     }
@@ -51,6 +67,9 @@ class QueueController extends Controller
         }
 
         $queue->fill($payload)->save();
+
+        $this->queueOverviewCache->forgetForTenant($request->user()->tenant_id);
+        $this->operationalAttendanceListCache->invalidateForTenant($request->user()->tenant_id);
 
         return new QueueResource($queue->fresh());
     }
