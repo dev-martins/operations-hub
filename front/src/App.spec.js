@@ -13,6 +13,10 @@ const attendanceServiceMocks = vi.hoisted(() => ({
   fetchApiStatus: vi.fn(),
 }))
 
+const sessionBoundStateMock = vi.hoisted(() => ({
+  resetSessionBoundState: vi.fn(),
+}))
+
 const authSessionMock = vi.hoisted(() => ({
   rawState: {
     user: null,
@@ -59,6 +63,7 @@ vi.mock('./adminator/scripts/utils/theme', () => ({ default: themeMock }))
 vi.mock('./adminator/scripts/components/Sidebar', () => ({
   default: sidebarMock.ctor,
 }))
+vi.mock('./stores/sessionBoundState', () => sessionBoundStateMock)
 
 const QueueView = { template: '<div>Fila carregada</div>' }
 const LoginView = { template: '<div>Login carregado</div>' }
@@ -139,6 +144,7 @@ describe('App', () => {
 
     attendanceServiceMocks.fetchApiStatus.mockReset()
     attendanceServiceMocks.fetchApiStatus.mockResolvedValue({ status: 'ok' })
+    sessionBoundStateMock.resetSessionBoundState.mockReset()
 
     themeMock.current.mockReset()
     themeMock.current.mockReturnValue('light')
@@ -162,10 +168,14 @@ describe('App', () => {
   })
 
   it('usa layout de autenticação sem sidebar quando a rota marca layout auth', async () => {
+    authSessionMock.stateRef.user = null
+    authSessionMock.stateRef.tenant = null
+
     const { wrapper } = await mountAppAt('/login')
 
     expect(wrapper.text()).toContain('Login carregado')
     expect(wrapper.find('.sidebar').exists()).toBe(false)
+    expect(attendanceServiceMocks.fetchApiStatus).not.toHaveBeenCalled()
   })
 
   it('redireciona para login ao receber evento de não autorizado', async () => {
@@ -175,6 +185,7 @@ describe('App', () => {
     await flushPromises()
 
     expect(authSessionMock.clearAuthSession).toHaveBeenCalled()
+    expect(sessionBoundStateMock.resetSessionBoundState).toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('login')
   })
 
@@ -185,6 +196,7 @@ describe('App', () => {
     await flushPromises()
 
     expect(authSessionMock.logout).toHaveBeenCalled()
+    expect(sessionBoundStateMock.resetSessionBoundState).toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('login')
   })
 

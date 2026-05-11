@@ -2,7 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import OperationalQueueView from './OperationalQueueView.vue'
-import { resetOperationalQueueState } from '../stores/operationalQueueContext'
+import { operationalQueueState, resetOperationalQueueState } from '../stores/operationalQueueContext'
 
 const attendanceServiceMocks = vi.hoisted(() => ({
   assignAttendance: vi.fn(),
@@ -167,5 +167,26 @@ describe('OperationalQueueView', () => {
 
     expect(wrapper.text()).toContain('Transição de status inválida.')
     expect(wrapper.text()).not.toContain('Status atualizado com sucesso.')
+  })
+
+  it('reaproveita a visão operacional já carregada ao montar novamente', async () => {
+    resetOperationalQueueState()
+    attendanceServiceMocks.fetchQueues.mockClear()
+    attendanceServiceMocks.fetchAttendances.mockClear()
+    attendanceServiceMocks.fetchAttendance.mockClear()
+
+    operationalQueueState.initialized = true
+    operationalQueueState.loading = false
+    operationalQueueState.queues = queues
+    operationalQueueState.attendances = attendancesResponse.data
+    operationalQueueState.selectedAttendance = attendanceDetail
+
+    const wrapper = await mountView()
+
+    expect(attendanceServiceMocks.fetchQueues).not.toHaveBeenCalled()
+    expect(attendanceServiceMocks.fetchAttendances).not.toHaveBeenCalled()
+    expect(attendanceServiceMocks.fetchAttendance).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Integração sem retorno')
+    expect(wrapper.text()).toContain('AT-301')
   })
 })

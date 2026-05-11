@@ -2,17 +2,16 @@
 import { onMounted } from 'vue'
 import { authState, hasPermission } from '../stores/authSession'
 import {
+  ensureAclOverview,
   governanceState,
   loadAclOverview,
-  resetGovernanceState,
   submitRoleUpdate,
 } from '../stores/governanceContext'
 
 const canManageAcl = () => hasPermission('acl.manage')
 
 onMounted(async () => {
-  resetGovernanceState()
-  await loadAclOverview()
+  await ensureAclOverview()
 })
 </script>
 
