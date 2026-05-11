@@ -57,7 +57,7 @@ Isso cria evidência real de que o projeto já sustenta:
 - recorte operacional coerente, sem misturar itens encerrados à fila ativa
 - manutenção do catálogo de filas sem sair do contexto multi-tenant
 - atualização controlada de papel de usuários com restrição explícita para evitar autoalteração indevida
-- formalização inicial de estado compartilhado no frontend para shell da aplicação e governança administrativa
+- formalização inicial de estado compartilhado no frontend para shell da aplicação, governança administrativa e fluxo operacional
 
 ## Próxima fase em andamento
 
@@ -75,6 +75,8 @@ O recorte atual dessa nova fase já começou com:
 - store de shell da aplicação para navegação visível, status da API e contexto derivado da sessão
 - store de governança compartilhada para filas administrativas e visão de ACL
 - store de fluxo operacional para lista principal, detalhe selecionado e mutações da fila
+- reaproveitamento de estado já carregado ao navegar entre telas administrativas e ao remontar a visão operacional
+- critérios explícitos de invalidação de estado em logout, `401` e perda de autenticação
 - redução de lógica remota diretamente dentro das views administrativas
 - redução de lógica remota diretamente dentro da visão operacional principal
 - testes dedicados para essas novas stores do frontend
@@ -147,6 +149,9 @@ Cenários já cobertos no frontend:
 - estado bloqueado da governança de filas sem permissão administrativa
 - criação e edição de filas na visão administrativa
 - governança do tenant na tela de ACL com atualização de papel e modo somente leitura
+- reaproveitamento de estado já carregado nas telas administrativas
+- reaproveitamento da visão operacional sem recarga desnecessária
+- limpeza coordenada do shell e dos stores ligados à sessão em logout e expiração de autenticação
 
 Neste projeto, a execução dos testes continua sendo feita somente dentro do Docker e usando o banco de testes isolado do ambiente containerizado:
 

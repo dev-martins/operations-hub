@@ -36,6 +36,7 @@ const buildAssignmentForm = () => ({
 
 const state = reactive({
   loading: true,
+  initialized: false,
   savingAttendance: false,
   updatingStatus: false,
   updatingAssignment: false,
@@ -137,16 +138,27 @@ export const loadOperationalAttendances = async () => {
   })
 
   state.attendances = data.data
-
-  if (state.attendances.length > 0 && !state.selectedAttendance) {
-    await selectOperationalAttendance(state.attendances[0].id)
-    return
-  }
+  const currentSelectedId = state.selectedAttendance?.id ?? null
 
   if (state.attendances.length === 0) {
     state.selectedAttendance = null
     syncSelectedAttendanceForms()
+    return
   }
+
+  if (currentSelectedId === null) {
+    await selectOperationalAttendance(state.attendances[0].id)
+    return
+  }
+
+  const selectedStillVisible = state.attendances.some(({ id }) => id === currentSelectedId)
+
+  if (!selectedStillVisible) {
+    await selectOperationalAttendance(state.attendances[0].id)
+    return
+  }
+
+  await selectOperationalAttendance(currentSelectedId)
 }
 
 export const loadOperationalView = async () => {
@@ -163,9 +175,22 @@ export const loadOperationalView = async () => {
     }
 
     await Promise.all(tasks)
+    state.initialized = true
   } finally {
     state.loading = false
   }
+}
+
+export const ensureOperationalView = async () => {
+  if (state.loading && state.initialized) {
+    return
+  }
+
+  if (state.initialized) {
+    return
+  }
+
+  await loadOperationalView()
 }
 
 export const selectOperationalAttendance = async (attendanceId) => {
@@ -260,6 +285,7 @@ export const submitOperationalAssignmentUpdate = async () => {
 
 export const resetOperationalQueueState = () => {
   state.loading = true
+  state.initialized = false
   state.savingAttendance = false
   state.updatingStatus = false
   state.updatingAssignment = false

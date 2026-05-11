@@ -38,9 +38,29 @@ export const resetQueueFeedback = () => {
   state.queueErrors = {}
 }
 
+export const resetAclFeedback = () => {
+  state.aclActionErrors = {}
+  state.aclActionFeedback = ''
+  state.updatingUserId = null
+}
+
 export const resetQueueForm = () => {
   state.queueForm = buildQueueForm()
   state.editingQueueId = null
+}
+
+export const resetQueuesState = () => {
+  state.queuesLoading = false
+  state.queuesSaving = false
+  state.queues = []
+  resetQueueFeedback()
+  resetQueueForm()
+}
+
+export const resetAclState = () => {
+  state.aclLoading = false
+  state.aclData = null
+  resetAclFeedback()
 }
 
 export const loadQueuesOverview = async () => {
@@ -51,6 +71,18 @@ export const loadQueuesOverview = async () => {
   } finally {
     state.queuesLoading = false
   }
+}
+
+export const ensureQueuesOverview = async () => {
+  if (state.queuesLoading) {
+    return
+  }
+
+  if (state.queues.length > 0) {
+    return
+  }
+
+  await loadQueuesOverview()
 }
 
 export const startQueueEditing = (queue) => {
@@ -109,6 +141,18 @@ export const loadAclOverview = async () => {
   }
 }
 
+export const ensureAclOverview = async () => {
+  if (state.aclLoading) {
+    return
+  }
+
+  if (state.aclData) {
+    return
+  }
+
+  await loadAclOverview()
+}
+
 export const submitRoleUpdate = async (userId, role) => {
   state.aclActionErrors = {}
   state.aclActionFeedback = ''
@@ -127,16 +171,6 @@ export const submitRoleUpdate = async (userId, role) => {
 }
 
 export const resetGovernanceState = () => {
-  state.queuesLoading = false
-  state.queuesSaving = false
-  state.queues = []
-  state.queueFeedback = ''
-  state.queueErrors = {}
-  state.editingQueueId = null
-  state.queueForm = buildQueueForm()
-  state.aclLoading = false
-  state.aclData = null
-  state.aclActionErrors = {}
-  state.aclActionFeedback = ''
-  state.updatingUserId = null
+  resetQueuesState()
+  resetAclState()
 }

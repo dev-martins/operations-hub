@@ -9,6 +9,7 @@ import {
   canCreateAttendance,
   creatorName,
   detailEvents,
+  ensureOperationalView,
   hasAttendances,
   hasUsers,
   loadOperationalAttendances,
@@ -18,7 +19,6 @@ import {
   queueCards,
   refreshOperationalPanels,
   requiresResolutionNotes,
-  resetOperationalQueueState,
   selectOperationalAttendance,
   submitOperationalAssignmentUpdate,
   submitOperationalAttendance,
@@ -60,8 +60,7 @@ const formatDateTime = (value) => {
 }
 
 onMounted(async () => {
-  resetOperationalQueueState()
-  await loadOperationalView()
+  await ensureOperationalView()
 })
 </script>
 

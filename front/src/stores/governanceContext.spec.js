@@ -2,12 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   activeQueuesCount,
   cancelQueueEditing,
+  ensureAclOverview,
+  ensureQueuesOverview,
   governanceState,
   inactiveQueuesCount,
   loadAclOverview,
   loadQueuesOverview,
   queueSubmitLabel,
+  resetAclState,
   resetGovernanceState,
+  resetQueuesState,
   startQueueEditing,
   submitQueue,
   submitRoleUpdate,
@@ -46,6 +50,14 @@ describe('governanceContext', () => {
     expect(activeQueuesCount.value).toBe(1)
     expect(inactiveQueuesCount.value).toBe(1)
     expect(totalWaitingCount.value).toBe(3)
+  })
+
+  it('preserva filas já carregadas ao usar ensureQueuesOverview', async () => {
+    governanceState.queues = [{ id: 1, active: true, waiting_count: 2 }]
+
+    await ensureQueuesOverview()
+
+    expect(governanceServiceMocks.fetchQueuesOverview).not.toHaveBeenCalled()
   })
 
   it('preenche formulário de edição e pode cancelá-lo', () => {
@@ -110,5 +122,57 @@ describe('governanceContext', () => {
 
     expect(governanceServiceMocks.updateUserRole).toHaveBeenCalledWith(9, { role: 'viewer' })
     expect(governanceState.aclActionFeedback).toBe('Papel atualizado com sucesso.')
+  })
+
+  it('preserva acl já carregada ao usar ensureAclOverview', async () => {
+    governanceState.aclData = {
+      current_user: { name: 'Alice' },
+      roles: [],
+      tenant_users: [],
+      manageable_roles: [],
+      role_summary: [],
+    }
+
+    await ensureAclOverview()
+
+    expect(authServiceMocks.fetchAclOverview).not.toHaveBeenCalled()
+  })
+
+  it('limpa apenas o domínio de filas sem apagar acl já carregada', () => {
+    governanceState.queues = [{ id: 1, active: true, waiting_count: 1 }]
+    governanceState.queueFeedback = 'ok'
+    governanceState.editingQueueId = 5
+    governanceState.aclData = {
+      current_user: { name: 'Alice' },
+      roles: [],
+      tenant_users: [],
+      manageable_roles: [],
+      role_summary: [],
+    }
+
+    resetQueuesState()
+
+    expect(governanceState.queues).toEqual([])
+    expect(governanceState.queueFeedback).toBe('')
+    expect(governanceState.editingQueueId).toBeNull()
+    expect(governanceState.aclData).not.toBeNull()
+  })
+
+  it('limpa apenas o domínio de acl sem apagar filas já carregadas', () => {
+    governanceState.queues = [{ id: 1, active: true, waiting_count: 1 }]
+    governanceState.aclData = {
+      current_user: { name: 'Alice' },
+      roles: [],
+      tenant_users: [],
+      manageable_roles: [],
+      role_summary: [],
+    }
+    governanceState.aclActionFeedback = 'ok'
+
+    resetAclState()
+
+    expect(governanceState.aclData).toBeNull()
+    expect(governanceState.aclActionFeedback).toBe('')
+    expect(governanceState.queues).toHaveLength(1)
   })
 })

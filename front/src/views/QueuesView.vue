@@ -4,10 +4,10 @@ import { hasPermission } from '../stores/authSession'
 import {
   activeQueuesCount,
   cancelQueueEditing,
+  ensureQueuesOverview,
   governanceState,
   loadQueuesOverview,
   queueSubmitLabel,
-  resetGovernanceState,
   startQueueEditing,
   submitQueue,
   totalWaitingCount,
@@ -17,8 +17,7 @@ import {
 const canManageQueues = computed(() => hasPermission('queues.manage'))
 
 onMounted(async () => {
-  resetGovernanceState()
-  await loadQueuesOverview()
+  await ensureQueuesOverview()
 })
 </script>
 

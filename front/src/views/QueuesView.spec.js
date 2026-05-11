@@ -2,7 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import QueuesView from './QueuesView.vue'
-import { resetGovernanceState } from '../stores/governanceContext'
+import { governanceState, resetGovernanceState } from '../stores/governanceContext'
 
 const governanceServiceMocks = vi.hoisted(() => ({
   createQueue: vi.fn(),
@@ -91,5 +91,16 @@ describe('QueuesView', () => {
       active: true,
     })
     expect(wrapper.text()).toContain('Fila atualizada com sucesso.')
+  })
+
+  it('reaproveita filas já carregadas ao montar novamente a visão', async () => {
+    resetGovernanceState()
+    governanceServiceMocks.fetchQueuesOverview.mockClear()
+    governanceState.queues = baseQueues
+
+    const wrapper = await mountView()
+
+    expect(governanceServiceMocks.fetchQueuesOverview).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Suporte N1')
   })
 })

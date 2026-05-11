@@ -3,7 +3,9 @@ import {
   canAssignAttendance,
   canCreateAttendance,
   detailEvents,
+  ensureOperationalView,
   loadOperationalAttendances,
+  loadOperationalView,
   loadOperationalQueues,
   loadOperationalUsers,
   operationalMetrics,
@@ -82,6 +84,29 @@ describe('operationalQueueContext', () => {
     expect(detailEvents.value).toHaveLength(1)
   })
 
+  it('seleciona o primeiro atendimento disponível quando o atual sai do recorte filtrado', async () => {
+    operationalQueueState.selectedAttendance = { id: 99 }
+    attendanceServiceMocks.fetchAttendances.mockResolvedValue({
+      data: [
+        {
+          id: 10,
+          status: 'open',
+          priority: 'critical',
+          assigned_to: null,
+        },
+      ],
+    })
+    attendanceServiceMocks.fetchAttendance.mockResolvedValue({
+      id: 10,
+      events: [{ id: 1, description: 'Criado' }],
+    })
+
+    await loadOperationalAttendances()
+
+    expect(attendanceServiceMocks.fetchAttendance).toHaveBeenCalledWith(10)
+    expect(operationalQueueState.selectedAttendance?.id).toBe(10)
+  })
+
   it('carrega usuários atribuíveis apenas quando a permissão existe', async () => {
     attendanceServiceMocks.fetchAssignableUsers.mockResolvedValue([{ id: 1, name: 'Ana' }])
 
@@ -111,6 +136,27 @@ describe('operationalQueueContext', () => {
       priority: 'medium',
       queue_id: 1,
     })
+  })
+
+  it('reaproveita a visão operacional já carregada ao usar ensureOperationalView', async () => {
+    operationalQueueState.initialized = true
+    operationalQueueState.loading = false
+
+    await ensureOperationalView()
+
+    expect(attendanceServiceMocks.fetchQueues).not.toHaveBeenCalled()
+    expect(attendanceServiceMocks.fetchAttendances).not.toHaveBeenCalled()
+  })
+
+  it('marca a visão operacional como inicializada ao concluir o carregamento', async () => {
+    attendanceServiceMocks.fetchQueues.mockResolvedValue([{ id: 1, name: 'Suporte N1', waiting_count: 1 }])
+    attendanceServiceMocks.fetchAttendances.mockResolvedValue({ data: [] })
+    attendanceServiceMocks.fetchAssignableUsers.mockResolvedValue([])
+
+    await loadOperationalView()
+
+    expect(operationalQueueState.initialized).toBe(true)
+    expect(operationalQueueState.loading).toBe(false)
   })
 
   it('envia atualização de status com notas de resolução quando necessário', async () => {
