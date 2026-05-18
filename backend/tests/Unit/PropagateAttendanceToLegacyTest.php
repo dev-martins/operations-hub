@@ -16,6 +16,19 @@ class PropagateAttendanceToLegacyTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_it_does_nothing_when_the_attendance_is_not_found_for_the_tenant(): void
+    {
+        $user = $this->createUserForTenant();
+
+        config()->set('operations.attendance_integrations.connection', 'rabbitmq');
+        config()->set('operations.attendance_integrations.queue', 'attendance-integrations');
+
+        $job = new PropagateAttendanceToLegacy(999999, $user->tenant_id, 'created');
+        $job->handle();
+
+        $this->assertDatabaseCount('attendance_events', 0);
+    }
+
     public function test_it_registers_the_processed_event_when_the_job_runs(): void
     {
         $user = $this->createUserForTenant();
@@ -48,6 +61,47 @@ class PropagateAttendanceToLegacyTest extends TestCase
         $job->handle();
 
         $this->assertDatabaseHas('attendance_events', [
+            'attendance_id' => $attendance->id,
+            'type' => 'legacy_sync_processed',
+        ]);
+    }
+
+    public function test_it_does_not_process_an_attendance_from_another_tenant(): void
+    {
+        $owner = $this->createUserForTenant();
+        $otherTenant = $this->createTenant([
+            'name' => 'Tenant Externo',
+            'slug' => 'tenant-externo-job',
+        ]);
+
+        $queue = OperationQueue::query()->create([
+            'tenant_id' => $owner->tenant_id,
+            'name' => 'Integrações',
+            'code' => 'INT',
+            'active' => true,
+        ]);
+
+        $attendance = Attendance::query()->create([
+            'tenant_id' => $owner->tenant_id,
+            'protocol' => 'AT-610002',
+            'title' => 'Sincronização restrita',
+            'description' => 'Não deve processar com tenant divergente.',
+            'type' => AttendanceType::INTEGRATION,
+            'origin' => AttendanceOrigin::ERP,
+            'priority' => AttendancePriority::HIGH,
+            'status' => AttendanceStatus::OPEN,
+            'queue_id' => $queue->id,
+            'created_by' => $owner->id,
+            'opened_at' => now(),
+        ]);
+
+        config()->set('operations.attendance_integrations.connection', 'rabbitmq');
+        config()->set('operations.attendance_integrations.queue', 'attendance-integrations');
+
+        $job = new PropagateAttendanceToLegacy($attendance->id, $otherTenant->id, 'created');
+        $job->handle();
+
+        $this->assertDatabaseMissing('attendance_events', [
             'attendance_id' => $attendance->id,
             'type' => 'legacy_sync_processed',
         ]);

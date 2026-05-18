@@ -29,6 +29,7 @@ class AttendanceApiTest extends TestCase
     public function test_it_creates_an_attendance_and_registers_the_first_event(): void
     {
         config()->set('operations.attendance_integrations.enabled', false);
+        Queue::fake();
 
         $user = $this->actingAsTenantUser();
 
@@ -63,6 +64,7 @@ class AttendanceApiTest extends TestCase
             'type' => 'created',
             'created_by' => $user->id,
         ]);
+        Queue::assertNothingPushed();
     }
 
     public function test_it_dispatches_legacy_synchronization_when_attendance_is_created(): void
