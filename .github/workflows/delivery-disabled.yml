@@ -2,6 +2,10 @@ name: Entrega Preparada
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'release/**'
 
 permissions:
   contents: read
