@@ -25,50 +25,52 @@ O versionamento deste projeto deve seguir GitFlow pensando em contexto de equipe
 Na etapa atual:
 
 - o Git já foi inicializado
-- a branch `main` já existe localmente e no remoto
-- a branch `develop` já existe localmente
-- o trabalho atual deve continuar a partir de `develop`
+- a branch `main` já existe localmente e representa a última linha pronta para release
+- a branch `develop` já existe localmente e segue como linha de integração
+- a tag `v0.1.0` já existe e representa a primeira release consolidada
+- o trabalho atual está seguindo em `feature/endurece-operacao-assincrona-release`
 
-Isso significa que o próximo passo correto não é criar Git novamente, e sim publicar `develop` e abrir a primeira `feature/*`.
+Isso significa que o próximo passo correto não é abrir a primeira feature nem preparar a release `0.1.0` novamente. O próximo ciclo natural do projeto é concluir a etapa atual em `feature/*`, integrar em `develop` e então abrir `release/0.2.0`.
 
 ## Próximo passo prático a partir do estado atual
 
-Se você já está em `develop`, siga esta sequência:
+Se a feature atual já estiver estabilizada e pronta para integração, siga esta sequência:
 
-### 1. Garantir que `develop` esteja publicada no remoto
-
-```bash
-git checkout develop
-git push -u origin develop
-```
-
-Por que usar:
-
-Publica a branch de integração do projeto e estabelece o rastreamento remoto, o que facilita próximos `push` e `pull`.
-
-### 2. Abrir a primeira branch de feature
+### 1. Integrar a feature em `develop`
 
 ```bash
 git checkout develop
 git pull origin develop
-git checkout -b feature/modulo-atendimentos-inicial
+git merge --no-ff feature/endurece-operacao-assincrona-release
+git push origin develop
 ```
 
 Por que usar:
 
-Mantém `develop` como linha de integração e isola a primeira entrega real do domínio em uma branch própria.
+Consolida a etapa atual na linha de integração e preserva a feature como unidade lógica no histórico.
 
-### 3. Trabalhar na feature e publicar a branch
+### 2. Abrir a próxima release
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout -b release/0.2.0
+```
+
+Por que usar:
+
+Separa estabilização, revisão final de documentação e preparo da entrega sem bloquear novas features futuras em paralelo.
+
+### 3. Estabilizar e concluir a release
 
 ```bash
 git add .
-git commit -m "feat: inicia modulo de atendimentos"
-git push -u origin feature/modulo-atendimentos-inicial
+git commit -m "chore: prepara release 0.2.0"
 ```
 
 Por que usar:
 
-Permite revisar o trabalho como unidade lógica, preservando clareza sobre o início do módulo.
+Mantém ajustes finais de release agrupados na branch certa, sem misturar estabilização com novas entregas.
 
 ## Passo a passo inicial
 
@@ -190,7 +192,7 @@ Quando `develop` acumular um conjunto coerente de entregas, abrir uma branch de 
 ```bash
 git checkout develop
 git pull origin develop
-git checkout -b release/0.1.0
+git checkout -b release/<versao>
 ```
 
 Por que usar:
@@ -210,12 +212,12 @@ Depois da estabilização:
 ```bash
 git checkout main
 git pull origin main
-git merge --no-ff release/0.1.0
-git tag -a v0.1.0 -m "Release v0.1.0"
+git merge --no-ff release/<versao>
+git tag -a v<versao> -m "Release v<versao>"
 git push origin main --tags
 git checkout develop
 git pull origin develop
-git merge --no-ff release/0.1.0
+git merge --no-ff release/<versao>
 git push origin develop
 ```
 
@@ -226,9 +228,23 @@ Por que usar:
 Encerramento da branch:
 
 ```bash
-git branch -d release/0.1.0
-git push origin --delete release/0.1.0
+git branch -d release/<versao>
+git push origin --delete release/<versao>
 ```
+
+### Próxima release prevista no projeto
+
+Considerando a tag já existente `v0.1.0`, a próxima release prevista para este repositório é:
+
+```bash
+release/0.2.0
+```
+
+Ela deve ser aberta depois que a feature atual concluir pelo menos estes pontos:
+
+- critérios operacionais explícitos para o worker assíncrono
+- documentação consolidada de operação assíncrona e preparo de release
+- validação completa da fase atual no Docker e no workflow de qualidade
 
 ## Fluxo de hotfix
 

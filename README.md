@@ -152,4 +152,6 @@ Leituras já disponíveis:
 - `docs/arquitetura/frontend.md`
 - `docs/arquitetura/dominio-operacional.md`
 - `docs/modulos/atendimentos-inicial.md`
+- `docs/processos/operacao-assincrona.md`
+- `docs/processos/release-0.2.0.md`
 - `docs/processos/pipeline-qualidade.md`

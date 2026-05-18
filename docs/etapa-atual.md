@@ -23,6 +23,8 @@ Consolidação de qualidade, testes e governança técnica sobre o primeiro mód
 - painel de ACL com leitura da matriz, resumo por papel e alteração de papel de usuários do tenant
 - fila operacional exibindo apenas atendimentos ainda em fluxo
 - detalhe do atendimento com identificação de quem abriu o registro para reforçar auditabilidade
+- cache de leitura por tenant para a visão de filas operacionais e administrativas
+- cache de leitura por tenant para a listagem operacional de atendimentos sem filtros adicionais, preservando invalidação simples e explicável
 - testes de feature cobrindo autenticação, contrato da API, isolamento por tenant e regras críticas de ACL
 - testes unitários iniciais cobrindo regras isoláveis de domínio e policy no backend
 - testes de frontend cobrindo filtros, formulários, permissões, estados bloqueados e renderização condicional do módulo
@@ -57,7 +59,8 @@ Isso cria evidência real de que o projeto já sustenta:
 - recorte operacional coerente, sem misturar itens encerrados à fila ativa
 - manutenção do catálogo de filas sem sair do contexto multi-tenant
 - atualização controlada de papel de usuários com restrição explícita para evitar autoalteração indevida
-- formalização inicial de estado compartilhado no frontend para shell da aplicação e governança administrativa
+- formalização inicial de estado compartilhado no frontend para shell da aplicação, governança administrativa e fluxo operacional
+- otimização de leitura com cache em Redis preparada no backend para a visão de filas por tenant
 
 ## Próxima fase em andamento
 
@@ -75,9 +78,13 @@ O recorte atual dessa nova fase já começou com:
 - store de shell da aplicação para navegação visível, status da API e contexto derivado da sessão
 - store de governança compartilhada para filas administrativas e visão de ACL
 - store de fluxo operacional para lista principal, detalhe selecionado e mutações da fila
+- reaproveitamento de estado já carregado ao navegar entre telas administrativas e ao remontar a visão operacional
+- critérios explícitos de invalidação de estado em logout, `401` e perda de autenticação
 - redução de lógica remota diretamente dentro das views administrativas
 - redução de lógica remota diretamente dentro da visão operacional principal
 - testes dedicados para essas novas stores do frontend
+- início do processamento assíncrono de atendimentos com RabbitMQ para integrações legadas desacopladas
+- worker dedicado no Docker para consumo da fila operacional assíncrona
 
 ## Próximo passo recomendado
 
@@ -127,6 +134,10 @@ Cenários já cobertos no backend:
 - criação e atualização de filas apenas para papel com `queues.manage`
 - atualização de papel de usuário apenas para papel com `acl.manage`
 - bloqueio de alteração do próprio papel na governança administrativa
+- reaproveitamento da leitura cacheada de `/api/v1/queues` até existir invalidação explícita
+- invalidação do cache de filas ao criar fila ou ao mudar a contagem operacional por abertura e resolução de atendimento
+- reaproveitamento da leitura cacheada de `/api/v1/attendances?operational_only=1` até existir mutação relevante na fila operacional
+- invalidação do cache da fila operacional ao criar atendimento, reatribuir responsável, resolver atendimento ou atualizar metadados da fila
 - identificação unitária de status terminais e status operacionais do atendimento
 - validação unitária da regra de atualização por operador responsável ou supervisão
 - validação unitária de negação por tenant e por atendimento terminal no policy
@@ -145,6 +156,9 @@ Cenários já cobertos no frontend:
 - estado bloqueado da governança de filas sem permissão administrativa
 - criação e edição de filas na visão administrativa
 - governança do tenant na tela de ACL com atualização de papel e modo somente leitura
+- reaproveitamento de estado já carregado nas telas administrativas
+- reaproveitamento da visão operacional sem recarga desnecessária
+- limpeza coordenada do shell e dos stores ligados à sessão em logout e expiração de autenticação
 
 Neste projeto, a execução dos testes continua sendo feita somente dentro do Docker e usando o banco de testes isolado do ambiente containerizado:
 

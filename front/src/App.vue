@@ -13,6 +13,7 @@ import {
   loadApiStatus,
   visibleNavigationItems,
 } from './stores/appShell'
+import { resetSessionBoundState } from './stores/sessionBoundState'
 
 const currentTheme = ref('light')
 const route = useRoute()
@@ -30,13 +31,27 @@ const toggleTheme = () => {
   syncTheme()
 }
 
+const prepareAuthenticatedShell = async () => {
+  if (!isAuthenticated.value) {
+    return
+  }
+
+  await loadApiStatus()
+}
+
+const resetApplicationSessionState = () => {
+  resetSessionBoundState()
+}
+
 const handleLogout = async () => {
   await logout()
+  resetApplicationSessionState()
   await router.push({ name: 'login' })
 }
 
 const handleUnauthorized = async () => {
   clearAuthSession()
+  resetApplicationSessionState()
 
   if (route.name !== 'login') {
     await router.push({ name: 'login' })
@@ -48,7 +63,7 @@ onMounted(async () => {
   Theme.init()
   syncTheme()
   await initializeAuthSession()
-  await loadApiStatus()
+  await prepareAuthenticatedShell()
 
   await nextTick()
   sidebar = new Sidebar()

@@ -105,6 +105,8 @@ Nesta fase, ele:
 - exibe o destino previsto das imagens no Artifact Registry
 - mantém um job de publicação condicionado por `DEPLOY_ENABLED == true`
 
+Mesmo desabilitado para publicação, esse workflow já roda em `main` e `release/**` para tratar a trilha de entrega como etapa própria de estabilização.
+
 ## Destino previsto das imagens
 
 Quando a esteira for ativada, as imagens serão publicadas no formato:
@@ -197,6 +199,21 @@ docker compose run --rm --entrypoint sh front -lc "npm test"
 docker compose run --rm --entrypoint sh front -lc "npm run build"
 ```
 
+Worker assíncrono:
+
+```bash
+docker compose up -d backend_worker
+```
+
+Parâmetros operacionais atuais do worker:
+
+- fila: `attendance-integrations`
+- `sleep`: `1`
+- `tries`: `3`
+- `timeout`: `30`
+
+Esses valores ficam centralizados nas variáveis `ATTENDANCE_INTEGRATION_WORKER_*`, evitando que retry e timeout fiquem implícitos apenas no comando do container.
+
 Espelhamento completo do CI antes de `push`:
 
 ```bash
@@ -210,11 +227,17 @@ git config core.hooksPath .githooks
 chmod +x .githooks/pre-push bin/pre-push-quality
 ```
 
+Comportamento operacional do hook local:
+
+- roda a validação completa quando o `push` envia commits ou atualiza refs remotas
+- ignora a validação quando o envio é apenas deleção de branch remota, como em `git push --delete origin feature/minha-branch`
+
 Esse fluxo mantém a regra do projeto:
 
 - execução local sempre via Docker
 - testes do backend usando o banco de testes containerizado
 - validação antes do `push`, e não depois do envio ao remoto
+- eliminação de custo desnecessário quando não há artefato novo sendo promovido ao remoto
 
 ## Leitura arquitetural desta decisão
 
@@ -262,3 +285,4 @@ Ainda não fazem parte desta etapa:
 Para a ativação futura do Artifact Registry no GCP, consultar:
 
 - `docs/processos/ativacao-artifact-registry-gcp.md`
+- `docs/processos/release-0.2.0.md`

@@ -2,7 +2,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AclView from './AclView.vue'
-import { resetGovernanceState } from '../stores/governanceContext'
+import { governanceState, resetGovernanceState } from '../stores/governanceContext'
 
 const authServiceMocks = vi.hoisted(() => ({
   fetchAclOverview: vi.fn(),
@@ -122,5 +122,16 @@ describe('AclView', () => {
 
     expect(wrapper.text()).toContain('Somente administração operacional pode alterar papéis.')
     expect(wrapper.find('[data-testid="acl-role-select"]').exists()).toBe(false)
+  })
+
+  it('reaproveita acl já carregada ao montar novamente a visão', async () => {
+    resetGovernanceState()
+    authServiceMocks.fetchAclOverview.mockClear()
+    governanceState.aclData = aclOverview
+
+    const wrapper = await mountView()
+
+    expect(authServiceMocks.fetchAclOverview).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain('Alice Admin')
   })
 })

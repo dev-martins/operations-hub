@@ -97,6 +97,8 @@ Eventos atualmente gerados:
 - `created`
 - `assigned`
 - `status_changed`
+- `legacy_sync_requested`
+- `legacy_sync_processed`
 
 ### Operador atribuível
 
@@ -129,6 +131,7 @@ No backend:
 - `opened_at` é preenchido no momento da criação
 - um evento `created` é registrado
 - se houver responsável inicial, um evento `assigned` também é registrado
+- quando a integração assíncrona estiver habilitada, um evento `legacy_sync_requested` é registrado e um job é publicado no RabbitMQ após o commit da transação
 
 ### 2. Autenticação e contexto
 
@@ -140,6 +143,17 @@ Depois do login:
 - o frontend carrega `GET /api/v1/auth/me`
 - o tenant inicial passa a ser resolvido a partir do usuário autenticado
 - as consultas do módulo retornam apenas dados do tenant ativo
+
+### 2.1. Propagação assíncrona para legado
+
+Após a abertura do atendimento, o backend pode publicar um job assíncrono para sincronização legada.
+
+Nesta primeira implementação:
+
+- a API não espera a integração externa terminar para responder
+- o job é enfileirado apenas depois do commit do atendimento
+- o worker registra `legacy_sync_processed` quando conclui o processamento
+- a trilha de eventos deixa explícita a diferença entre intenção de integração e processamento efetivo
 
 ### 3. Consulta da fila
 

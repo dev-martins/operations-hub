@@ -57,11 +57,12 @@ O raciocínio arquitetural importante aqui é:
 - dados remotos precisam ter estratégia clara para loading, erro, retry e invalidação
 - permissões e tenant impactam não só a renderização, mas também a navegação disponível
 
-Na evolução atual do projeto, essa estratégia passou a ser explicitada por três categorias de store:
+Na evolução atual do projeto, essa estratégia passou a ser explicitada por quatro categorias de store:
 
 - stores de shell e contexto global: sessão autenticada, tenant ativo, permissões derivadas, status da API e navegação visível
 - stores de governança compartilhada: filas administrativas, visão de ACL, feedback de mutação e sincronização de dados remotos usados em mais de uma tela administrativa
 - stores de fluxo operacional: fila principal, detalhe do atendimento selecionado, formulários de mutação e sincronização do recorte ativo da operação
+- stores de ciclo de sessão: limpeza coordenada de estados que não devem sobreviver a logout, perda de autenticação ou troca completa de contexto
 
 ## Integração com a API
 
@@ -93,6 +94,7 @@ Na etapa atual, o frontend já usa o payload autenticado para:
 - esconder ações operacionais que o papel atual não pode executar
 - exibir uma visão explícita da matriz inicial de ACL
 - sustentar uma tela dedicada de atendimentos com filtros, paginação, detalhe e ações dependentes do recurso selecionado
+- redefinir o shell, a governança administrativa e o fluxo operacional quando a sessão expira ou o usuário sai da aplicação
 
 ## Relação com o Adminator
 
@@ -144,6 +146,7 @@ No estado atual, fica explícita a separação entre:
 - `stores/appShell`: contexto compartilhado do shell da aplicação, como navegação filtrada por ACL e status da API
 - `stores/governanceContext`: estado administrativo compartilhado entre filas e ACL, com loading, erro, edição e reidratação dos dados remotos
 - `stores/operationalQueueContext`: estado remoto e transitório da fila operacional, incluindo filtros, criação de atendimento, seleção atual e ações sobre o registro selecionado
+- `stores/sessionBoundState`: orquestração de limpeza dos estados que dependem da sessão autenticada
 
 Essa organização foi escolhida para evitar uma `view` monolítica e tornar mais fácil testar:
 
@@ -158,5 +161,12 @@ Também foi escolhida para deixar mais clara a fronteira entre:
 - estado administrativo compartilhado entre mais de uma tela
 - estado operacional compartilhado por blocos distintos da mesma visão
 - estado local de uma view específica, que ainda pode continuar em composables ou `reactive` local quando não há reaproveitamento suficiente para store
+
+Na implementação mais recente, essa fronteira ganhou duas regras operacionais explícitas:
+
+- telas administrativas e operacionais podem reaproveitar contexto já carregado ao remontar, evitando nova busca desnecessária quando o estado continua válido
+- logout, `401` e perda de autenticação limpam de forma coordenada o shell, a governança administrativa e o fluxo operacional, evitando que a interface preserve dados da sessão anterior
+
+Isso foi materializado por carregamentos sob demanda, como `ensureQueuesOverview`, `ensureAclOverview` e `ensureOperationalView`, e por um reset centralizado de estado vinculado à sessão. O objetivo não é sofisticar o frontend sem necessidade, mas deixar visível que a aplicação tem critério sobre o que pode sobreviver à navegação e o que deve ser invalidado imediatamente.
 
 Com isso, o frontend deixa de depender apenas de lógica distribuída em `views` e passa a mostrar de forma mais explícita como tenant, ACL, navegação e governança administrativa são coordenados pela aplicação.
