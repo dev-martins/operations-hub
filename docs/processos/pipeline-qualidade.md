@@ -105,6 +105,8 @@ Nesta fase, ele:
 - exibe o destino previsto das imagens no Artifact Registry
 - mantém um job de publicação condicionado por `DEPLOY_ENABLED == true`
 
+Mesmo desabilitado para publicação, esse workflow já roda em `main` e `release/**` para tratar a trilha de entrega como etapa própria de estabilização.
+
 ## Destino previsto das imagens
 
 Quando a esteira for ativada, as imagens serão publicadas no formato:
@@ -197,6 +199,21 @@ docker compose run --rm --entrypoint sh front -lc "npm test"
 docker compose run --rm --entrypoint sh front -lc "npm run build"
 ```
 
+Worker assíncrono:
+
+```bash
+docker compose up -d backend_worker
+```
+
+Parâmetros operacionais atuais do worker:
+
+- fila: `attendance-integrations`
+- `sleep`: `1`
+- `tries`: `3`
+- `timeout`: `30`
+
+Esses valores ficam centralizados nas variáveis `ATTENDANCE_INTEGRATION_WORKER_*`, evitando que retry e timeout fiquem implícitos apenas no comando do container.
+
 Espelhamento completo do CI antes de `push`:
 
 ```bash
@@ -268,3 +285,4 @@ Ainda não fazem parte desta etapa:
 Para a ativação futura do Artifact Registry no GCP, consultar:
 
 - `docs/processos/ativacao-artifact-registry-gcp.md`
+- `docs/processos/release-0.2.0.md`
