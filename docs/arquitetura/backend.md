@@ -171,4 +171,4 @@ Hoje o backend já saiu da fundação técnica e possui um primeiro fluxo operac
 - detalhe do atendimento distinguindo autor da abertura e responsável atual
 - testes de feature representativos do contrato público da API
 
-O próximo passo recomendado é expandir essa base para governança administrativa, filas e cobertura automatizada complementar, preservando o mesmo padrão de isolamento por tenant e autorização explícita.
+O próximo passo recomendado é consolidar a base já existente de governança administrativa, cache de leitura e mensageria operacional, preservando o mesmo padrão de isolamento por tenant, autorização explícita e cobertura automatizada incremental.

@@ -2,7 +2,7 @@
 
 ## Fase
 
-Consolidação de qualidade, testes e governança técnica sobre o primeiro módulo operacional já autenticado, multi-tenant e protegido por ACL.
+Consolidação da maturidade arquitetural sobre o primeiro módulo operacional já autenticado, multi-tenant, protegido por ACL e validado por suíte automatizada.
 
 ## O que já existe
 
@@ -41,7 +41,6 @@ Consolidação de qualidade, testes e governança técnica sobre o primeiro mód
 ## O que ainda não existe
 
 - deploy automatizado ativo em ambiente remoto
-- fluxo Git/GitFlow inicializado no repositório
 
 ## Leitura da fase atual
 
@@ -64,7 +63,7 @@ Isso cria evidência real de que o projeto já sustenta:
 
 ## Próxima fase em andamento
 
-Após o fechamento da consolidação de testes, o projeto iniciou a etapa de formalização da arquitetura de estado compartilhado do frontend.
+Após o fechamento da consolidação de testes, o projeto iniciou a etapa de formalização da arquitetura de estado compartilhado do frontend e de endurecimento dos pontos de desempenho e desacoplamento já introduzidos.
 
 Nesta evolução, o objetivo deixa de ser apenas "ter telas funcionando" e passa a ser demonstrar de forma mais explícita:
 
@@ -88,19 +87,19 @@ O recorte atual dessa nova fase já começou com:
 
 ## Próximo passo recomendado
 
-Com a pipeline de qualidade já materializada e a trilha de entrega preparada, o avanço mais coerente agora é consolidar a estratégia de crescimento da suíte e endurecer os critérios de cobertura. Nesta etapa, o projeto deve:
+Com a pipeline de qualidade já materializada e a fase de estado compartilhado, cache e mensageria já iniciada, o avanço mais coerente agora é fechar essa etapa com documentação, cobertura e critérios operacionais mais explícitos. Nesta evolução, o projeto deve:
 
-1. explicitar o critério de cobertura para backend, frontend e testes manuais
-2. mapear lacunas dos fluxos críticos do domínio e da governança administrativa
-3. começar a abrir espaço para testes mais leves e isolados quando surgirem unidades com regra relevante
-4. medir o custo de execução da suíte antes de decidir por paralelismo ou fragmentação do pré-push
-5. registrar essa decisão de qualidade em `docs/processos/estrategia-testes.md`
+1. consolidar a documentação pública e técnica do uso de stores, cache e consumo assíncrono
+2. mapear lacunas de teste nos fluxos ligados a estado compartilhado, invalidação e integração assíncrona
+3. evoluir critérios operacionais de mensageria, como retry, tratamento de falhas e próximos passos para dead-letter
+4. manter a estratégia de crescimento da suíte como suporte desta fase, sem reabrir discussão prematura de paralelismo
+5. preparar o fluxo de release a partir de `develop`, `release/*` e `main` quando a fase atual estiver fechada
 
-Esse fechamento já foi iniciado com a criação dos primeiros testes unitários do backend e com a medição explícita da suíte atual em Docker. O restante da fase deve ser lido mais como endurecimento de critério do que como ausência de cobertura automatizada relevante.
+Esse fechamento já foi parcialmente sustentado por `docs/processos/estrategia-testes.md`, pela criação dos primeiros testes unitários do backend e pela medição explícita da suíte atual em Docker. O restante da fase deve ser lido como consolidação arquitetural e operacional, não como ausência de cobertura relevante.
 
 ## Leitura recomendada para a próxima fase
 
-A etapa atual já abriu a infraestrutura mínima de qualidade. O próximo ganho de maturidade está em usar essa base para endurecer critérios de arquitetura, integração e governança.
+A etapa atual já abriu a infraestrutura mínima de qualidade e iniciou a formalização de estado, desempenho de leitura e integração assíncrona. O próximo ganho de maturidade está em transformar esses avanços em base estável para novas evoluções do domínio.
 
 O módulo atual já permite:
 
@@ -114,7 +113,7 @@ O módulo atual já permite:
 - administrar filas do tenant
 - redistribuir papéis de acesso no tenant com governança explícita
 
-O próximo passo é fazer esse fluxo operar com governança de qualidade mais explícita, para que a evolução para cache, mensageria, integrações e CI/CD aconteça sobre uma base funcional real e testável.
+O próximo passo é fazer esse fluxo operar com critérios mais explícitos de estado compartilhado, invalidação, mensageria e governança de release, para que a evolução futura aconteça sobre uma base funcional real e testável.
 
 ## Evidência de testes nesta fase
 
